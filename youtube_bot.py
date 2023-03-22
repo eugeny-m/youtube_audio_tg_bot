@@ -12,7 +12,6 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-
 # Define a function to handle /start command
 async def start(update, context):
     """Send a message when the command /start is issued."""
@@ -70,15 +69,16 @@ async def message_handler(update, context):
 def main():
     # Get Telegram bot token from environment variable
     token = os.environ.get("TELEGRAM_BOT_TOKEN")
-
+    
     # Create the Application and pass it your bot's token.
     application = Application.builder().token(token).build()
-
+    
     # Commands
     application.add_handler(CommandHandler('start', start))
-
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, message_handler))
-
+    
+    application.add_handler(
+        MessageHandler(filters.TEXT & ~filters.COMMAND, message_handler))
+    
     application.run_polling(allowed_updates=Update.ALL_TYPES)
 
 
