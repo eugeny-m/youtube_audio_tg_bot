@@ -1,0 +1,9 @@
+version: "3"
+services:
+  telegram-bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: python youtube_bot.py
+    environment:
+      TELEGRAM_BOT_TOKEN: your-token-here
