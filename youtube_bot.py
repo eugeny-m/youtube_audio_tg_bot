@@ -40,9 +40,10 @@ async def message_handler(update, context):
         "Trying to download the audio file.",
         reply_to_message_id=update.message.message_id,
     )
+    logger.info("Trying to download the audio file.")
     try:
         yt = pytube.YouTube(message_text)
-        audio_stream = yt.streams.filter(only_audio=True).last()
+        audio_stream = yt.streams.filter(only_audio=True).first()
         audio_filename = f"{audio_stream.default_filename[:-4]}.mp3"
         audio_stream.download(output_path=".", filename=audio_filename)
     except Exception as e:
@@ -50,17 +51,22 @@ async def message_handler(update, context):
             "An error occurred while downloading the audio file.",
             reply_to_message_id=update.message.message_id,
         )
-        logger.error(e)
+        logger.exception(e)
         return
     
     # Send audio file back to user
+    logger.info("Download completed, Sending the audio file.")
     await update.message.reply_text(
         "Download completed, Sending the audio file.",
         reply_to_message_id=update.message.message_id,
     )
-    audio_file = open(audio_filename, 'rb')
-    await update.effective_message.reply_audio(audio_file)
-    
+    with open(audio_filename, 'rb') as audio_file:
+        await update.effective_message.reply_audio(
+            audio_file,
+            read_timeout=1000,
+            write_timeout=1000,
+        )
+
     # Delete audio file from server
     os.remove(audio_filename)
 
@@ -71,7 +77,13 @@ def main():
     token = os.environ.get("TELEGRAM_BOT_TOKEN")
     
     # Create the Application and pass it your bot's token.
-    application = Application.builder().token(token).build()
+    application = (
+        Application.builder()
+        .token(token)
+        # .read_timeout(30)
+        # .write_timeout(600)
+        .build()
+    )
     
     # Commands
     application.add_handler(CommandHandler('start', start))
