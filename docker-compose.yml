@@ -9,4 +9,4 @@ services:
       TELEGRAM_BOT_TOKEN: your-token-here
     volumes:
       - ./cipher_patched.py:/usr/local/lib/python3.12/site-packages/pytube/cipher.py  # patch regexp
-
+      - ./innertube_patched.py:/usr/local/lib/python3.12/site-packages/pytube/innertube.py
