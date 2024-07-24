@@ -7,3 +7,6 @@ services:
     command: python youtube_bot.py
     environment:
       TELEGRAM_BOT_TOKEN: your-token-here
+    volumes:
+      - ./cipher_replaced.py:/usr/local/lib/python3.12/site-packages/pytube/cipher.py  # patch regexp
+
