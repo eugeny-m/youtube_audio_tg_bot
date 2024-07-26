@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:experimental
 # Use an official Python runtime as a parent image
-FROM python:latest
+FROM python:3.12.4
 
 # Set the working directory to /app
 WORKDIR /app
