@@ -5,6 +5,19 @@ import pytube
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters
 
+
+import pytube.innertube
+
+# start patch bad request fix
+pytube.innertube._default_clients["ANDROID"]["context"]["client"]["clientVersion"] = "19.08.35"
+pytube.innertube._default_clients["IOS"]["context"]["client"]["clientVersion"] = "19.08.35"
+pytube.innertube._default_clients["ANDROID_EMBED"]["context"]["client"]["clientVersion"] = "19.08.35"
+pytube.innertube._default_clients["IOS_EMBED"]["context"]["client"]["clientVersion"] = "19.08.35"
+pytube.innertube._default_clients["IOS_MUSIC"]["context"]["client"]["clientVersion"] = "6.41"
+pytube.innertube._default_clients["ANDROID_MUSIC"] = pytube.innertube._default_clients["ANDROID_CREATOR"]
+# end patch bad request fix
+
+
 # Setup logging
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
