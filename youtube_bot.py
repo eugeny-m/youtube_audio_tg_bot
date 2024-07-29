@@ -1,27 +1,11 @@
 import os
 import logging
 
-import pytube
+import pytubefix
+import pytubefix.extract
+from pytubefix.cli import on_progress
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters
-
-
-import pytube.innertube
-
-# start patch bad request fix
-pytube.innertube._default_clients["WEB"]["context"]["client"]["clientVersion"] = "2.20220801.00.00"
-pytube.innertube._default_clients["WEB_EMBED"]["context"]["client"]["clientVersion"] = "1.20220731.00.00"
-pytube.innertube._default_clients["WEB_CREATOR"]["context"]["client"]["clientVersion"] = "1.20220726.00.00"
-
-pytube.innertube._default_clients["ANDROID"]["context"]["client"]["clientVersion"] = "19.09.37"
-pytube.innertube._default_clients["ANDROID_EMBED"]["context"]["client"]["clientVersion"] = "19.09.37"
-pytube.innertube._default_clients["ANDROID_CREATOR"]["context"]["client"]["clientVersion"] = "22.30.100"
-pytube.innertube._default_clients["ANDROID_MUSIC"]["context"]["client"]["clientVersion"] = "6.42.52"
-
-pytube.innertube._default_clients["IOS"]["context"]["client"]["clientVersion"] = "19.09.3"
-pytube.innertube._default_clients["IOS_EMBED"]["context"]["client"]["clientVersion"] = "19.09.3"
-pytube.innertube._default_clients["IOS_MUSIC"]["context"]["client"]["clientVersion"] = "6.33.3"
-# end patch bad request fix
 
 
 # Setup logging
@@ -46,7 +30,7 @@ async def message_handler(update, context):
     
     # Check if message contains a valid YouTube link
     try:
-        pytube.extract.video_id(message_text)
+        pytubefix.extract.video_id(message_text)
     except Exception:
         await update.message.reply_text(
             "Please send me a valid YouTube video link.",
@@ -61,8 +45,8 @@ async def message_handler(update, context):
     )
     logger.info("Trying to download the audio file.")
     try:
-        yt = pytube.YouTube(message_text)
-        audio_stream = yt.streams.filter(only_audio=True).first()
+        yt = pytubefix.YouTube(message_text, on_progress_callback=on_progress)
+        audio_stream = yt.streams.get_audio_only()
         audio_filename = f"{audio_stream.default_filename[:-4]}.mp3"
         audio_stream.download(output_path=".", filename=audio_filename)
     except Exception as e:
