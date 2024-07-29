@@ -9,12 +9,18 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters
 import pytube.innertube
 
 # start patch bad request fix
-pytube.innertube._default_clients["ANDROID"]["context"]["client"]["clientVersion"] = "19.08.35"
-pytube.innertube._default_clients["IOS"]["context"]["client"]["clientVersion"] = "19.08.35"
-pytube.innertube._default_clients["ANDROID_EMBED"]["context"]["client"]["clientVersion"] = "19.08.35"
-pytube.innertube._default_clients["IOS_EMBED"]["context"]["client"]["clientVersion"] = "19.08.35"
-pytube.innertube._default_clients["IOS_MUSIC"]["context"]["client"]["clientVersion"] = "6.41"
-pytube.innertube._default_clients["ANDROID_MUSIC"] = pytube.innertube._default_clients["ANDROID_CREATOR"]
+pytube.innertube._default_clients["WEB"]["context"]["client"]["clientVersion"] = "2.20220801.00.00"
+pytube.innertube._default_clients["WEB_EMBED"]["context"]["client"]["clientVersion"] = "1.20220731.00.00"
+pytube.innertube._default_clients["WEB_CREATOR"]["context"]["client"]["clientVersion"] = "1.20220726.00.00"
+
+pytube.innertube._default_clients["ANDROID"]["context"]["client"]["clientVersion"] = "19.09.37"
+pytube.innertube._default_clients["ANDROID_EMBED"]["context"]["client"]["clientVersion"] = "19.09.37"
+pytube.innertube._default_clients["ANDROID_CREATOR"]["context"]["client"]["clientVersion"] = "22.30.100"
+pytube.innertube._default_clients["ANDROID_MUSIC"]["context"]["client"]["clientVersion"] = "6.42.52"
+
+pytube.innertube._default_clients["IOS"]["context"]["client"]["clientVersion"] = "19.09.3"
+pytube.innertube._default_clients["IOS_EMBED"]["context"]["client"]["clientVersion"] = "19.09.3"
+pytube.innertube._default_clients["IOS_MUSIC"]["context"]["client"]["clientVersion"] = "6.33.3"
 # end patch bad request fix
 
 
