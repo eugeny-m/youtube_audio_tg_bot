@@ -1,6 +1,7 @@
 import os
 import logging
 
+import cyrtranslit
 import pytubefix
 import pytubefix.extract
 from pytubefix.cli import on_progress
@@ -48,6 +49,8 @@ async def message_handler(update, context):
         yt = pytubefix.YouTube(message_text, on_progress_callback=on_progress)
         audio_stream = yt.streams.get_audio_only()
         audio_filename = f"{audio_stream.default_filename[:-4]}.mp3"
+        # transliterate name if cyrillic
+        audio_filename = cyrtranslit.to_latin(audio_filename, 'ru')
         audio_stream.download(output_path=".", filename=audio_filename)
     except Exception as e:
         await update.message.reply_text(
