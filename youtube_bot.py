@@ -39,8 +39,7 @@ TEMP_DOWNLOAD_DIR = Path('temp_download').resolve()
 
 
 def split_audio_ffmpeg(input_path: Path, max_size_mb: float):
-    logger.info(
-        f'Start splitting audio file {input_path} to chunks {max_size_mb}Mb')
+    logger.info(f'Start splitting audio file {input_path} to chunks {max_size_mb}Mb')
     temp_dir = input_path.parent
     
     suffix = input_path.suffix
@@ -68,7 +67,7 @@ def split_audio_ffmpeg(input_path: Path, max_size_mb: float):
     
     for i in range(num_chunks):
         start_time = i * seconds_per_chunk
-        output_path = os.path.join(temp_dir, f"{input_path.stem}_{i:02}{suffix}")
+        output_path = temp_dir / f"{input_path.stem}_{i:02}{suffix}"
         
         cmd = [
             'ffmpeg', '-v', 'error',
@@ -180,6 +179,7 @@ class YoutubeService:
     @staticmethod
     def clear_temp_dir(temp_dir: Path):
         # remove directory recursive
+        logger.info(f'Removing temp dir {temp_dir}')
         shutil.rmtree(temp_dir)
 
 
@@ -192,7 +192,8 @@ async def command_start_handler(message: Message) -> None:
         f'username: {message.from_user.full_name}'
     )
     await message.answer(
-        'Hi! Send me a YouTube video link and I will send you the audio file.'
+        'Привет!\n Пришли мне ссылку на ютуб видео, а в ответ я пришлю '
+        'аудиофайл этого видео для прослушивания.'
     )
 
 
@@ -217,16 +218,18 @@ async def echo_handler(message: Message) -> None:
     max_audio_file_size_mb = 49.5
     valid_url = YoutubeService.validate_video_url(message.text)
     if not valid_url:
-        await message.reply('Please send me a valid YouTube video link.')
+        await message.reply('Пришли пожалуйста валидную ссылку на ютуб видео.')
         return
-    
-    await message.answer('Trying to download the audio file.')
+
+    resp = await message.answer('Скачиваю файл..')
+
     try:
         temp_file, temp_dir, filesize_mb = YoutubeService.download_audio(message.text, max_audio_file_size_mb)
     except:
-        await message.answer("An error occurred while downloading the audio file.")
+        await message.answer("Произошла ошибка при скачивании файла =(")
         return
-    
+
+    await resp.edit_text('Файл скачан, начинаю обработку..')
     try:
         files_to_send = YoutubeService.prepare_files_to_send(
             temp_file=temp_file,
@@ -235,16 +238,28 @@ async def echo_handler(message: Message) -> None:
         )
     except Exception as e:
         logger.exception(e)
-        await message.reply("An error occurred while preparing the audio file.")
+        await message.answer(
+            "Произошла ошибка при подготовке аудиофайла =(\n"
+            "Свяжитесь с администратором"
+        )
         return
 
-    for audio_chunk in files_to_send:
+    success = True
+    for ind, audio_chunk in enumerate(files_to_send, start=1):
+        await resp.edit_text(f'Аудиофайл обработан, начинаю отправку {ind} файла из {len(files_to_send)}..')
+        
         try:
-            await message.reply_audio(FSInputFile(audio_chunk))
+            logger.info(f'Sending audio chunk {ind} of {len(files_to_send)}, {audio_chunk.name}')
+            await message.answer_audio(FSInputFile(audio_chunk))
         except Exception as e:
             logger.exception(e)
-            await message.reply(f'An error occurred while sending file. {audio_chunk.name}')
+            success = False
             break
+
+    if success:
+        await message.reply('Все файлы успешно отправлены!')
+    else:
+        await message.reply('Некоторые файлы не удалось отправить =(')
 
     YoutubeService.clear_temp_dir(temp_dir)
 
