@@ -5,6 +5,7 @@ import cyrtranslit
 import pytubefix
 import pytubefix.extract
 from pytubefix.cli import on_progress
+from slugify import slugify
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters
 
@@ -48,9 +49,11 @@ async def message_handler(update, context):
     try:
         yt = pytubefix.YouTube(message_text, on_progress_callback=on_progress)
         audio_stream = yt.streams.get_audio_only()
-        audio_filename = f"{audio_stream.default_filename[:-4]}.mp3"
+        audio_filename = audio_stream.default_filename[:-4]
         # transliterate name if cyrillic
-        audio_filename = cyrtranslit.to_latin(audio_filename, 'ru')
+        # audio_filename = cyrtranslit.to_latin(audio_filename, 'ru')
+        # slugify name
+        audio_filename = f'{slugify(audio_filename, max_length=46)}.mp3'
         audio_stream.download(output_path=".", filename=audio_filename)
     except Exception as e:
         await update.message.reply_text(
@@ -63,18 +66,19 @@ async def message_handler(update, context):
     # Send audio file back to user
     logger.info("Download completed, Sending the audio file.")
     await update.message.reply_text(
-        "Download completed, Sending the audio file.",
+        f"Download completed, Sending the audio file. {audio_filename}",
         reply_to_message_id=update.message.message_id,
     )
     with open(audio_filename, 'rb') as audio_file:
-        await update.effective_message.reply_audio(
-            audio_file,
-            read_timeout=1000,
-            write_timeout=1000,
-        )
-
-    # Delete audio file from server
-    os.remove(audio_filename)
+        try:
+            await update.effective_message.reply_document(
+                audio_file,
+                read_timeout=1000,
+                write_timeout=1000,
+            )
+        finally:
+            # Delete audio file from server
+            os.remove(audio_filename)
 
 
 # Define a main function to start the bot
