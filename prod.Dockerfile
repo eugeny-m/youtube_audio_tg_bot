@@ -1,7 +1,6 @@
 FROM python:3.12
 
-RUN apt-get update -y
-
+RUN apt-get update && apt-get install -y ffmpeg
 
 # Set the working directory to /app
 WORKDIR /app

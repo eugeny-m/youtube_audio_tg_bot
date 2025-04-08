@@ -2,6 +2,8 @@
 # Use an official Python runtime as a parent image
 FROM python:3.12.4
 
+RUN apt-get update && apt-get install -y ffmpeg
+
 # Set the working directory to /app
 WORKDIR /app
 
