@@ -12,8 +12,8 @@ from aiogram import Bot, Dispatcher
 from aiogram.enums import ParseMode
 from aiogram.filters import CommandStart
 from aiogram.types import (
-    InputFileUnion,
     Message,
+    FSInputFile
 )
 
 from log import get_logger
@@ -105,17 +105,15 @@ async def echo_handler(message: Message) -> None:
     await message.reply(
         f"Download completed, Sending the audio file. {audio_filename}",
     )
-    with open(audio_filename, 'rb') as audio_file:
-        try:
-            await message.reply_audio(InputFileUnion(filename=audio_filename))
-        except Exception as e:
-            logger.exception(e)
-            await message.reply(
-                "An error occurred while sending the audio file.")
-        finally:
-            # Delete audio file from server
-            os.remove(audio_filename)
-            logger.info(f"File {audio_filename} deleted.")
+    try:
+        await message.reply_audio(FSInputFile(audio_filename))
+    except Exception as e:
+        logger.exception(e)
+        await message.reply("An error occurred while sending the audio file.")
+    finally:
+        # Delete audio file from server
+        os.remove(audio_filename)
+        logger.info(f"File {audio_filename} deleted.")
 
 
 async def _main() -> None:
