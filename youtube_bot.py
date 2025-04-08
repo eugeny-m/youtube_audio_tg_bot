@@ -192,7 +192,7 @@ async def command_start_handler(message: Message) -> None:
         f'username: {message.from_user.full_name}'
     )
     await message.answer(
-        'Привет!\n Пришли мне ссылку на ютуб видео, а в ответ я пришлю '
+        'Привет!\nПришли мне ссылку на ютуб видео, а в ответ я пришлю '
         'аудиофайл этого видео для прослушивания.'
     )
 
