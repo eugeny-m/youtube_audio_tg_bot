@@ -1,11 +1,11 @@
 version: "3"
 services:
-  telegram-bot:
-    build:
-      context: .
-      dockerfile: Dockerfile
+  youtube_bot:
+    image: youtube_tg:latest
+    container_name: youtube_tg
     command: python youtube_bot.py
+    #command: python dev_loop.py
     environment:
       TELEGRAM_BOT_TOKEN: your-token-here
     volumes:
-      - ./cipher_patched.py:/usr/local/lib/python3.12/site-packages/pytube/cipher.py  # patch regexp
+      - ./:/app
