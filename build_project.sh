@@ -1,0 +1,1 @@
+docker buildx build --network host  --platform=linux/amd64 -t youtube_tg:latest -f prod.Dockerfile .

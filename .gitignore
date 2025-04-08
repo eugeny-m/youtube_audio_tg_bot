@@ -38,4 +38,8 @@ MANIFEST
 
 # local project settings
 local-docker-compose.yml
+
+prod.DockerFile
 docker-compose.yml
+
+
