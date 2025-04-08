@@ -11,7 +11,7 @@ RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
 
 # Copy the current directory contents into the container at /app
-COPY youtube_bot.py /app
+COPY youtube_bot.py log.py dev_loop.py /app
 
 # Define the command to run the bot when the container starts
 CMD ["python", "youtube_bot.py"]
