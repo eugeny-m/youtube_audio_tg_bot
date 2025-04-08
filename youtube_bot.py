@@ -1,13 +1,14 @@
 import asyncio
+import math
 import os
 import shutil
+import subprocess
 
 import pytubefix
 import pytubefix.extract
 
 from pathlib import Path
 
-from pydub import AudioSegment
 from pytubefix import Stream
 from pytubefix.cli import on_progress
 from slugify import slugify
@@ -37,45 +38,66 @@ dp = Dispatcher()
 TEMP_DOWNLOAD_DIR = Path('temp_download').resolve()
 
 
-def split_audio_by_size(input_path: Path, max_size_mb: float) -> [Path]:
-    logger.info(f'Start splitting audio file {input_path} to chunks {max_size_mb}Mb')
+def split_audio_ffmpeg(input_path: Path, max_size_mb: float):
+    logger.info(
+        f'Start splitting audio file {input_path} to chunks {max_size_mb}Mb')
     temp_dir = input_path.parent
-    name_no_extension = input_path.stem
-    extension = Path(input_path).suffix
     
-    audio = AudioSegment.from_file(input_path)
-    max_size_bytes = max_size_mb * 1024 * 1024
+    suffix = input_path.suffix
+    result = subprocess.run(
+        ['ffprobe', '-v', 'error', '-show_entries',
+         'format=duration', '-of', 'default=noprint_wrappers=1:nokey=1',
+         input_path],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True
+    )
+    duration = float(result.stdout.strip())
+    logger.info(f"Duration: {duration:.2f} sec")
     
-    chunk_duration = 1000 * 10  # Start chunk time duration, 10 seconds
-    chunks = []
+    file_size_mb = os.path.getsize(input_path) / (1024 * 1024)
+    logger.info(f"File size: {file_size_mb:.2f} MB")
     
-    start = 0
-    current_chunk = audio[:chunk_duration]
-    for end in range(0, len(audio), chunk_duration):
-        if len(current_chunk.raw_data) >= max_size_bytes * 10:
-            chunks.append(current_chunk)
-            start = end
-        
-        current_chunk = audio[start:end]
+    seconds_per_chunk = duration * (max_size_mb / file_size_mb)
+    logger.info(f"Approx seconds per chunk: {seconds_per_chunk:.2f}")
     
-    if len(current_chunk) > 0:
-        chunks.append(current_chunk)
+    num_chunks = math.ceil(duration / seconds_per_chunk)
+    logger.info(f"Splitting into {num_chunks} chunks")
     
     output_files = []
-    for idx, chunk in enumerate(chunks, start=1):
-        output_filename = f"{name_no_extension}_{idx}{extension}"
-        output_filepath = temp_dir / output_filename
-        chunk.export(output_filepath, format="mp3")
-        logger.info(f"File saved: {output_filename} (size: {os.path.getsize(output_filepath) / (1024 * 1024):.2f} MB)")
-        output_files.append(output_filepath)
-        if os.path.getsize(output_filepath) > max_size_bytes:
-            raise ValueError(
-                f'Generated chunk with size {os.path.getsize(output_filepath)}b > '
-                f'{max_size_bytes}b'
+    
+    for i in range(num_chunks):
+        start_time = i * seconds_per_chunk
+        output_path = os.path.join(temp_dir, f"{input_path.stem}_{i:02}{suffix}")
+        
+        cmd = [
+            'ffmpeg', '-v', 'error',
+            '-ss', str(start_time),
+            '-t', str(seconds_per_chunk),
+            '-i', input_path,
+            '-acodec', 'copy',
+            output_path
+        ]
+        logger.info(f"Creating chunk {i + 1}/{num_chunks}: {output_path}")
+        
+        try:
+            result = subprocess.run(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                check=True
             )
-    logger.info('Splitting completed')
+        except subprocess.CalledProcessError as e:
+            logger.exception(e)
+            logger.error(f"❌ Error creating chunk {i + 1}")
+            logger.errorr("STDERR:\n", e.stderr)
+            raise e
+        
+        output_files.append(output_path)
+    
+    logger.info(f"Finish splitting {input_path.name}.")
     return output_files
-
 
 class YoutubeService:
     @staticmethod
@@ -91,7 +113,7 @@ class YoutubeService:
     def get_audio_stream(url_: str, max_size_mb: float) -> tuple[Stream, float]:
         logger.info(f'Choosing audio stream for video {url_}')
         yt = pytubefix.YouTube(url_, on_progress_callback=on_progress)
-        streams = yt.streams.filter(only_audio=True, subtype='mp4').order_by("abr")
+        streams = yt.streams.filter(only_audio=True, subtype='mp4').order_by("abr").desc()
         if not streams:
             raise ValueError(f'No audio streams for this url!')
 
@@ -135,20 +157,25 @@ class YoutubeService:
         logger.info("Trying to download the audio file.")
         try:
             audio_stream, filesize_mb = cls.get_audio_stream(url_, max_size_mb)
-            audio_filename = slugify(audio_stream.default_filename, max_length=46, separator='_')
+
+            suffix = Path(audio_stream.default_filename).suffix
+            audio_filename = slugify(audio_stream.default_filename, max_length=25, separator='_')
+            audio_filename = f'{audio_filename}{suffix}'
             temp_dir = cls.prepare_temp_dir(audio_filename)
+
             audio_stream.download(output_path=str(temp_dir), filename=audio_filename)
         except Exception as e:
             logger.exception(e)
             raise e
-        logger.info("Download completed, Sending the audio file.")
-        return temp_dir / audio_filename, temp_dir, filesize_mb
+        temp_file_path = temp_dir / audio_filename
+        logger.info(f"Download completed. {temp_file_path}")
+        return temp_file_path, temp_dir, filesize_mb
 
     @staticmethod
     def prepare_files_to_send(temp_file: Path, filesize_mb: float, max_size_mb: float) -> [Path]:
         if filesize_mb <= max_size_mb:
             return [temp_file]
-        return split_audio_by_size(temp_file, max_size_mb)
+        return split_audio_ffmpeg(temp_file, max_size_mb)
 
     @staticmethod
     def clear_temp_dir(temp_dir: Path):
@@ -217,8 +244,9 @@ async def echo_handler(message: Message) -> None:
         except Exception as e:
             logger.exception(e)
             await message.reply(f'An error occurred while sending file. {audio_chunk.name}')
-            YoutubeService.clear_temp_dir(temp_dir)
             break
+
+    YoutubeService.clear_temp_dir(temp_dir)
 
 
 async def _main() -> None:
