@@ -7,5 +7,7 @@ services:
     #command: python dev_loop.py
     environment:
       TELEGRAM_BOT_TOKEN: your-token-here
+      TG_SUPERUSER: 00000001
     volumes:
       - ./:/app
+      - /etc/youtube_tg/first_visit_ids.txt:/app/first_visit_ids.txt

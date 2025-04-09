@@ -16,13 +16,14 @@ from slugify import slugify
 from aiogram.client.default import DefaultBotProperties
 from aiogram import Bot, Dispatcher
 from aiogram.enums import ParseMode
-from aiogram.filters import CommandStart
+from aiogram.filters import Command, CommandStart
 from aiogram.types import (
     Message,
     FSInputFile
 )
 
 from log import get_logger
+from visit_counter import get_visit_storage
 
 
 def get_bot() -> Bot:
@@ -35,7 +36,13 @@ def get_bot() -> Bot:
 logger = get_logger()
 bot = get_bot()
 dp = Dispatcher()
+TG_SUPERUSER = os.environ.get('TG_SUPERUSER')
 TEMP_DOWNLOAD_DIR = Path('temp_download').resolve()
+
+
+class AdminCommandConst:
+    USERS_COUNT = 'users_count'
+
 
 
 def split_audio_ffmpeg(input_path: Path, max_size_mb: float):
@@ -97,6 +104,7 @@ def split_audio_ffmpeg(input_path: Path, max_size_mb: float):
     
     logger.info(f"Finish splitting {input_path.name}.")
     return output_files
+
 
 class YoutubeService:
     @staticmethod
@@ -191,10 +199,22 @@ async def command_start_handler(message: Message) -> None:
         f'chat_id: {message.chat.id} '
         f'username: {message.from_user.full_name}'
     )
+    visit_storage = get_visit_storage()
+    visit_storage.add_id(message.from_user.id)
     await message.answer(
         'Привет!\nПришли мне ссылку на ютуб видео, а в ответ я пришлю '
         'аудиофайл этого видео для прослушивания.'
     )
+
+
+@dp.message(Command(AdminCommandConst.USERS_COUNT))
+async def command_user_count(message: Message) -> None:
+    if message.from_user.id != int(TG_SUPERUSER):
+        await message.answer('Команда не существует')
+        return
+
+    visit_storage = get_visit_storage()
+    await message.edit_text(f'Количество уникальных пользователей: {visit_storage.get_users_count()}')
 
 
 @dp.message()
