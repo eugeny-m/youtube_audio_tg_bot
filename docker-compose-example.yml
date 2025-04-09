@@ -10,4 +10,4 @@ services:
       TG_SUPERUSER: 00000001
     volumes:
       - ./:/app
-      - /etc/youtube_tg/first_visit_ids.txt:/app/first_visit_ids.txt
+      - /etc/youtube_tg_bot:/app/config

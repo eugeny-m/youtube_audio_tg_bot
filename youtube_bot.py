@@ -214,7 +214,8 @@ async def command_user_count(message: Message) -> None:
         return
 
     visit_storage = get_visit_storage()
-    await message.edit_text(f'Количество уникальных пользователей: {visit_storage.get_users_count()}')
+    await message.delete()
+    await message.answer(f'Количество уникальных пользователей: {visit_storage.get_users_count()}')
 
 
 @dp.message()

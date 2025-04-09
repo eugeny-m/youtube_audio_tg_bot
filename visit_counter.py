@@ -3,7 +3,7 @@ from log import get_logger
 
 
 logger = get_logger()
-DEFAULT_FILE_PATH = Path('first_visit_ids.txt').resolve()
+DEFAULT_FILE_PATH = Path('config/first_visit_ids.txt').resolve()
 
 
 class FirstVisitFileStorage:
