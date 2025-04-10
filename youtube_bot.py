@@ -14,7 +14,7 @@ from pytubefix.cli import on_progress
 from slugify import slugify
 
 from aiogram.client.default import DefaultBotProperties
-from aiogram import Bot, Dispatcher
+from aiogram import Bot, Dispatcher, html
 from aiogram.enums import ParseMode
 from aiogram.filters import Command, CommandStart
 from aiogram.types import (
@@ -23,7 +23,7 @@ from aiogram.types import (
 )
 
 from log import get_logger
-from visit_counter import get_visit_storage
+from visit_counter import BotUsageLogger, get_visit_storage
 
 
 def get_bot() -> Bot:
@@ -38,11 +38,11 @@ bot = get_bot()
 dp = Dispatcher()
 TG_SUPERUSER = os.environ.get('TG_SUPERUSER')
 TEMP_DOWNLOAD_DIR = Path('temp_download').resolve()
+usage_logger = BotUsageLogger()
 
 
 class AdminCommandConst:
-    USERS_COUNT = 'users_count'
-
+    USERS_STATS = 'users_stats'
 
 
 def split_audio_ffmpeg(input_path: Path, max_size_mb: float):
@@ -207,15 +207,16 @@ async def command_start_handler(message: Message) -> None:
     )
 
 
-@dp.message(Command(AdminCommandConst.USERS_COUNT))
+@dp.message(Command(AdminCommandConst.USERS_STATS))
 async def command_user_count(message: Message) -> None:
     if message.from_user.id != int(TG_SUPERUSER):
         await message.answer('Команда не существует')
         return
 
     visit_storage = get_visit_storage()
-    await message.delete()
-    await message.answer(f'Количество уникальных пользователей: {visit_storage.get_users_count()}')
+    analytics = usage_logger.get_stats(visit_storage.unique_ids)
+    formatted = usage_logger.get_analytics_formatted_string(analytics)
+    await message.answer(f'{html.pre(formatted)}')
 
 
 @dp.message()
@@ -241,6 +242,9 @@ async def echo_handler(message: Message) -> None:
     if not valid_url:
         await message.reply('Пришли пожалуйста валидную ссылку на ютуб видео.')
         return
+
+    # store user id usage for analytics
+    usage_logger.append(message.from_user.id)
 
     resp = await message.answer('Скачиваю файл..')
 
