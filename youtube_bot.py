@@ -228,6 +228,7 @@ async def echo_handler(message: Message) -> None:
     IMPORTANT! Place any commands handlers above this handler.!!!
     Any command handlers below this handler will be processed by this one.
     """
+    logger.info(f'Received message from [{message.from_user.id}]: [{message.text}]')
     if not message.text:
         logger.error(message)
         raise ValueError(f'Unhandled message type with empty text!')
@@ -242,6 +243,11 @@ async def echo_handler(message: Message) -> None:
     if not valid_url:
         await message.reply('Пришли пожалуйста валидную ссылку на ютуб видео.')
         return
+
+    logger.info(
+        f'Received message from [{message.from_user.id}]: [{message.text}] '
+        f'recognized as valid youtube video link. Processing..'
+    )
 
     # store user id usage for analytics
     usage_logger.append(message.from_user.id)
@@ -287,6 +293,7 @@ async def echo_handler(message: Message) -> None:
         await message.reply('Некоторые файлы не удалось отправить =(')
 
     YoutubeService.clear_temp_dir(temp_dir)
+    logger.info(f'Finish processing message from [{message.from_user.id}]')
 
 
 async def _main() -> None:
