@@ -97,7 +97,7 @@ def split_audio_ffmpeg(input_path: Path, max_size_mb: float):
         except subprocess.CalledProcessError as e:
             logger.exception(e)
             logger.error(f"❌ Error creating chunk {i + 1}")
-            logger.errorr("STDERR:\n", e.stderr)
+            logger.error("STDERR:\n", e.stderr)
             raise e
         
         output_files.append(output_path)
