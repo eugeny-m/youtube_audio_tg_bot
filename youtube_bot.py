@@ -41,6 +41,7 @@ TG_SUPERUSER = os.environ.get('TG_SUPERUSER')
 PRODUCTION = os.environ.get('PRODUCTION', False)
 BOT_USERNAME = 'get_me_youtube_audio_bot'
 TEMP_DOWNLOAD_DIR = Path('temp_download').resolve()
+IS_PRODUCTION = PRODUCTION == '1'
 usage_logger = BotUsageLogger()
 
 
@@ -300,7 +301,7 @@ async def echo_handler(message: Message) -> None:
 
 
 @dp_placeholder.message()
-async def echo_handler(message: Message) -> None:
+async def placeholder_handler(message: Message) -> None:
     """
     Handler will forward receive a message back to the sender
     By default, message handler will handle all message types (like a text, photo, sticker etc.)
@@ -321,9 +322,10 @@ async def echo_handler(message: Message) -> None:
 
 
 async def _main() -> None:
-    logger.info(f'Start polling bot, {PRODUCTION=}')
-    poller = dp
-    if PRODUCTION != 1:
+    logger.info(f'Start polling bot, {IS_PRODUCTION=}')
+    if IS_PRODUCTION:
+        poller = dp
+    else:
         poller = dp_placeholder
     await poller.start_polling(bot)
 
