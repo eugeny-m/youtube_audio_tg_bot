@@ -36,7 +36,10 @@ def get_bot() -> Bot:
 logger = get_logger()
 bot = get_bot()
 dp = Dispatcher()
+dp_placeholder = Dispatcher()
 TG_SUPERUSER = os.environ.get('TG_SUPERUSER')
+PRODUCTION = os.environ.get('PRODUCTION', False)
+BOT_USERNAME = 'get_me_youtube_audio_bot'
 TEMP_DOWNLOAD_DIR = Path('temp_download').resolve()
 usage_logger = BotUsageLogger()
 
@@ -296,9 +299,33 @@ async def echo_handler(message: Message) -> None:
     logger.info(f'Finish processing message from [{message.from_user.id}]')
 
 
+@dp_placeholder.message()
+async def echo_handler(message: Message) -> None:
+    """
+    Handler will forward receive a message back to the sender
+    By default, message handler will handle all message types (like a text, photo, sticker etc.)
+
+    IMPORTANT! Place any commands handlers above this handler.!!!
+    Any command handlers below this handler will be processed by this one.
+    """
+    logger.info(f'Received message from [{message.from_user.id}]: [{message.text}]')
+    if not message.text:
+        logger.error(message)
+        raise ValueError(f'Unhandled message type with empty text!')
+
+    await message.answer(
+        f'Функционал бота переехал в отдельный аккаунт '
+        f'с соответствующим никнеймом @{BOT_USERNAME}. Этот вскоре будет '
+        f'отключен.'
+    )
+
+
 async def _main() -> None:
-    logger.info(f'Start polling bot')
-    await dp.start_polling(bot)
+    logger.info(f'Start polling bot, {PRODUCTION=}')
+    poller = dp
+    if PRODUCTION != 1:
+        poller = dp_placeholder
+    await poller.start_polling(bot)
 
 
 async def main() -> None:

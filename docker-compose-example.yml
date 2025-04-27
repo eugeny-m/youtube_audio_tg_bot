@@ -8,6 +8,7 @@ services:
     environment:
       TELEGRAM_BOT_TOKEN: your-token-here
       TG_SUPERUSER: 00000001
+      PRODUCTION: 1
     volumes:
       - ./:/app
       - /etc/youtube_tg_bot:/app/config
