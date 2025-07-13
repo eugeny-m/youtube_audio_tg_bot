@@ -7,6 +7,7 @@ services:
     #command: python dev_loop.py
     environment:
       TELEGRAM_BOT_TOKEN: your-token-here
+      BOT_PROXY: "http://0.0.0.0:8888"
       TG_SUPERUSER: 00000001
       PRODUCTION: 1
     volumes:
