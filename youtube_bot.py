@@ -26,11 +26,19 @@ from log import get_logger
 from visit_counter import BotUsageLogger, get_visit_storage
 
 
+BOT_PROXY = os.environ.get("BOT_PROXY", None)
+BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
+
+
 def get_bot() -> Bot:
-    return Bot(
-        token=os.environ.get("TELEGRAM_BOT_TOKEN"),
-        default=DefaultBotProperties(parse_mode=ParseMode.HTML),
+    bot_params = dict(
+        token=BOT_TOKEN,
+        default=DefaultBotProperties(parse_mode=ParseMode.HTML)
     )
+    if BOT_PROXY:
+        from aiogram.client.session.aiohttp import AiohttpSession
+        bot_params['session'] = AiohttpSession(proxy=BOT_PROXY)
+    return Bot(**bot_params)
 
 
 logger = get_logger()
@@ -299,7 +307,7 @@ async def echo_handler(message: Message) -> None:
 
 async def _main() -> None:
     logger.info(f'Start polling bot')
-    await dp.start_polling(bot, polling_timeout=30)
+    await dp.start_polling(bot, polling_timeout=40)
 
 
 async def main() -> None:
