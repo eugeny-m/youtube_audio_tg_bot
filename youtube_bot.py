@@ -133,11 +133,9 @@ class YoutubeService:
         if not streams:
             raise ValueError(f'No audio streams for this url!')
 
-        for s in streams:
-            audio_stream = s
-            if s.filesize_mb < max_size_mb:
-                break
-
+        # Выбираем поток с максимальным битрейтом (первый в отсортированном списке)
+        audio_stream = streams[0]
+        
         logger.info(
             f'File to download have been chosen. '
             f'Name {audio_stream.default_filename}, '
