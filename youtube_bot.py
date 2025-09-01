@@ -128,7 +128,12 @@ class YoutubeService:
     @staticmethod
     def get_audio_stream(url_: str, max_size_mb: float) -> tuple[Stream, float]:
         logger.info(f'Choosing audio stream for video {url_}')
-        yt = pytubefix.YouTube(url_, on_progress_callback=on_progress)
+        yt = pytubefix.YouTube(
+            url_,
+            client='WEB',
+            on_progress_callback=on_progress,
+            # use_po_token=True,
+        )
         streams = yt.streams.filter(only_audio=True, subtype='mp4').order_by("abr").desc()
         if not streams:
             raise ValueError(f'No audio streams for this url!')

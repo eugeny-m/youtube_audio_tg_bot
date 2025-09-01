@@ -1,8 +1,9 @@
-# syntax=docker/dockerfile:experimental
 # Use an official Python runtime as a parent image
 FROM python:3.12.4
 
 RUN apt-get update && apt-get install -y ffmpeg
+# install nodejs for pytubefix project potoken generation
+RUN apt-get install -y --fix-missing nodejs npm
 
 # Set the working directory to /app
 WORKDIR /app
