@@ -271,6 +271,7 @@ async def echo_handler(message: Message) -> None:
         temp_file, temp_dir, filesize_mb = YoutubeService.download_audio(message.text, max_audio_file_size_mb)
     except:
         await message.answer("Произошла ошибка при скачивании файла =(")
+        await bot.send_message(chat_id=TG_SUPERUSER, text=f'Error downloading file, link: {message.text}')
         return
 
     await resp.edit_text('Файл скачан, начинаю обработку..')
@@ -306,6 +307,7 @@ async def echo_handler(message: Message) -> None:
     else:
         await message.reply('Некоторые файлы не удалось отправить =(')
         logger.info(f'Some files failed to send.')
+        await bot.send_message(chat_id=TG_SUPERUSER, text=f'Error sending file to user')
 
     YoutubeService.clear_temp_dir(temp_dir)
     logger.info(f'Finish processing message from [{message.from_user.id}]')
