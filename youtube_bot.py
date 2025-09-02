@@ -130,7 +130,8 @@ class YoutubeService:
         logger.info(f'Choosing audio stream for video {url_}')
         yt = pytubefix.YouTube(
             url_,
-            client='WEB',
+            # client='WEB',
+            # client='IOS',
             on_progress_callback=on_progress,
             # use_po_token=True,
         )
