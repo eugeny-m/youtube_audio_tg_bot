@@ -301,8 +301,10 @@ async def echo_handler(message: Message) -> None:
 
     if success:
         await message.reply('Все файлы успешно отправлены!')
+        logger.info(f'Files successfully sent')
     else:
         await message.reply('Некоторые файлы не удалось отправить =(')
+        logger.info(f'Some files failed to send.')
 
     YoutubeService.clear_temp_dir(temp_dir)
     logger.info(f'Finish processing message from [{message.from_user.id}]')
