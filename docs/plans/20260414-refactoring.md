@@ -289,7 +289,7 @@ youtube_listener/           # project root (working directory)
 **Files:**
 - Create: `main.py`
 
-- [ ] Create `main.py`:
+- [x] Create `main.py`:
   - Load `Settings`
   - Call `setup_logging(settings)`
   - Call `init_db(settings.db_path)` (async, at startup)
@@ -299,9 +299,9 @@ youtube_listener/           # project root (working directory)
   - Register middlewares (LoggingMiddleware, FSMTimeoutMiddleware)
   - Include routers from all handler modules
   - Start polling
-- [ ] Verify `main.py` imports resolve correctly
-- [ ] Write smoke test: main module imports without error
-- [ ] Run tests — must pass before next task
+- [x] Verify `main.py` imports resolve correctly
+- [x] Write smoke test: main module imports without error
+- [x] Run tests — must pass before next task
 
 ### Task 12: Update Docker and deployment files
 
