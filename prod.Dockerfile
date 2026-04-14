@@ -18,7 +18,5 @@ COPY services/ /app/services/
 COPY storage/ /app/storage/
 COPY main.py /app/main.py
 
-RUN useradd --create-home appuser && chown -R appuser:appuser /app
-USER appuser
 
 CMD ["python", "main.py"]
