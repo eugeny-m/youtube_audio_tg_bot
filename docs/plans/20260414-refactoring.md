@@ -169,15 +169,15 @@ youtube_listener/           # project root (working directory)
 - Create: `storage/migration.py`
 - Create: `tests/test_migration.py`
 
-- [ ] Create `storage/migration.py` with `migrate_from_txt(db_path, config_dir)`:
+- [x] Create `storage/migration.py` with `migrate_from_txt(db_path, config_dir)`:
   - Read `first_visit_ids.txt` → INSERT into `users` (username=NULL, first_seen_at=migration timestamp)
   - Read `bot_usage.txt` → INSERT into `usage_log` (user_id only, video_id=NULL)
   - Rename source files to `.txt.migrated` after success
   - Idempotent: skip if `.txt` files don't exist or `.txt.migrated` already exists
-- [ ] Write tests: migration with sample txt data, verify data in SQLite
-- [ ] Write tests: idempotent re-run (no errors, no duplicates)
-- [ ] Write tests: missing files handled gracefully
-- [ ] Run tests — must pass before next task
+- [x] Write tests: migration with sample txt data, verify data in SQLite
+- [x] Write tests: idempotent re-run (no errors, no duplicates)
+- [x] Write tests: missing files handled gracefully
+- [x] Run tests — must pass before next task
 
 ### Task 5: Extract services/youtube.py with stream listing and async wrapping
 
