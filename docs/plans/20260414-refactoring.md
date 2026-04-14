@@ -149,19 +149,19 @@ youtube_listener/           # project root (working directory)
 - Modify: `requirements.txt`
 - Create: `tests/test_repository.py`
 
-- [ ] Add `aiosqlite` to `requirements.txt`
-- [ ] Create `storage/database.py` with `init_db(db_path)` — creates `users` and `usage_log` tables (idempotent with IF NOT EXISTS)
-- [ ] Create `storage/repository.py` with `UserRepository(db_path)` class using connection-per-call pattern:
+- [x] Add `aiosqlite` to `requirements.txt`
+- [x] Create `storage/database.py` with `init_db(db_path)` — creates `users` and `usage_log` tables (idempotent with IF NOT EXISTS)
+- [x] Create `storage/repository.py` with `UserRepository(db_path)` class using connection-per-call pattern:
   - `add_user(user_id, username)` — INSERT OR IGNORE
   - `log_usage(user_id, video_id)` — INSERT into usage_log
   - `get_users_count()` — COUNT from users
   - `get_stats()` — analytics: total users, active users, usage distribution
   - `get_top_users(limit)` — top users by usage count
   - `get_weekly_stats()` — usage in last 7 days
-- [ ] Write tests for `init_db` (tables created, idempotent re-run)
-- [ ] Write tests for `UserRepository` methods (add_user, log_usage, get_stats, get_top_users, get_weekly_stats)
-- [ ] Write tests for edge cases (duplicate user ignored, empty db stats return zeroes)
-- [ ] Run tests — must pass before next task
+- [x] Write tests for `init_db` (tables created, idempotent re-run)
+- [x] Write tests for `UserRepository` methods (add_user, log_usage, get_stats, get_top_users, get_weekly_stats)
+- [x] Write tests for edge cases (duplicate user ignored, empty db stats return zeroes)
+- [x] Run tests — must pass before next task
 
 ### Task 4: Create txt → SQLite migration script
 

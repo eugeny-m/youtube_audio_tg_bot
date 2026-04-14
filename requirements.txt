@@ -9,4 +9,5 @@ python-socks==2.7.1
 pytubefix==9.5.0
 pydantic-settings==2.9.1
 python-json-logger==4.1.0
+aiosqlite==0.21.0
 setuptools==72.1.0
