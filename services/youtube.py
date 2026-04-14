@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
@@ -7,10 +8,19 @@ from typing import Optional
 import pytubefix
 import pytubefix.extract
 from pytubefix.streams import Stream
+from urllib.error import HTTPError
 from slugify import slugify
 
 
 logger = logging.getLogger(__name__)
+
+
+def _parse_abr(abr: str | None) -> int:
+    """Extract numeric bitrate from abr string like '128kbps'. Returns 0 on failure."""
+    if not abr:
+        return 0
+    match = re.search(r"\d+", abr)
+    return int(match.group()) if match else 0
 
 
 @dataclass
@@ -85,25 +95,30 @@ class YoutubeService:
             mime_type = fmt.get('mimeType', '')
             if 'audio' not in mime_type:
                 continue
-            stream = Stream(
-                stream=fmt,
-                monostate=yt.stream_monostate,
-                po_token=yt.po_token,
-                video_playback_ustreamer_config=yt.video_playback_ustreamer_config,
-            )
-            lang = getattr(stream, 'audio_track_name', None)
-            stream_list.append(StreamInfo(
-                itag=stream.itag,
-                language=lang,
-                abr=stream.abr,
-                size_mb=stream.filesize_mb,
-            ))
+            try:
+                stream = Stream(
+                    stream=fmt,
+                    monostate=yt.stream_monostate,
+                    po_token=yt.po_token,
+                    video_playback_ustreamer_config=yt.video_playback_ustreamer_config,
+                )
+                lang = getattr(stream, 'audio_track_name', None)
+                size_mb = stream.filesize_mb if stream._filesize_mb else 0.0
+                stream_list.append(StreamInfo(
+                    itag=stream.itag,
+                    language=lang,
+                    abr=stream.abr,
+                    size_mb=size_mb,
+                ))
+            except Exception:
+                logger.debug("skipping_unparseable_stream", extra={"itag": fmt.get("itag")})
+                continue
 
         if not stream_list:
             raise ValueError("No audio streams available from WEB client for this URL")
 
-        # Sort by abr descending (same as default client)
-        stream_list.sort(key=lambda s: s.abr, reverse=True)
+        # Sort by abr descending (numeric, same as default client)
+        stream_list.sort(key=lambda s: _parse_abr(s.abr), reverse=True)
 
         logger.info("streams_found_web_client", extra={
             "url": url,
@@ -132,14 +147,30 @@ class YoutubeService:
             return YoutubeService._get_streams_default_client(url)
 
     @staticmethod
-    def download_by_itag(url: str, itag: int, temp_dir: Path) -> Path:
-        """Download a specific stream by itag to temp_dir. Returns path to downloaded file."""
-        logger.info("download_by_itag_started", extra={"url": url, "itag": itag})
-        yt = pytubefix.YouTube(url)
-        stream = yt.streams.get_by_itag(itag)
-        if stream is None:
-            raise ValueError(f"No stream found with itag {itag}")
+    def _build_sabr_stream(url: str, itag: int) -> Stream:
+        """Reconstruct a single SABR Stream by itag from WEB client's vid_info.
 
+        Raises ValueError if the itag is not found among SABR audio streams.
+        """
+        yt = pytubefix.YouTube(url, client='WEB')
+        vid_info = yt.vid_info
+        streaming_data = vid_info['streamingData']
+        stream_manifest = pytubefix.extract.apply_descrambler(streaming_data)
+
+        for fmt in stream_manifest:
+            if int(fmt.get('itag', 0)) == itag and 'audio' in fmt.get('mimeType', ''):
+                return Stream(
+                    stream=fmt,
+                    monostate=yt.stream_monostate,
+                    po_token=yt.po_token,
+                    video_playback_ustreamer_config=yt.video_playback_ustreamer_config,
+                )
+
+        raise ValueError(f"No SABR audio stream found with itag {itag}")
+
+    @staticmethod
+    def _download_stream(stream, temp_dir: Path, itag: int) -> Path:
+        """Download a stream to temp_dir. Returns path to downloaded file."""
         suffix = Path(stream.default_filename).suffix
         filename = slugify(Path(stream.default_filename).stem, max_length=25, separator='_')
         if not filename:
@@ -148,12 +179,49 @@ class YoutubeService:
 
         temp_dir.mkdir(parents=True, exist_ok=True)
         stream.download(output_path=str(temp_dir), filename=filename)
+        return temp_dir / filename
 
-        result_path = temp_dir / filename
+    @staticmethod
+    def download_by_itag(url: str, itag: int, temp_dir: Path) -> Path:
+        """Download a specific stream by itag to temp_dir. Returns path to downloaded file.
+
+        Tries WEB client SABR stream first, falls back to default client.
+        Raises an informative error on HTTP 403 (authentication may be required).
+        """
+        logger.info("download_by_itag_started", extra={"url": url, "itag": itag})
+
+        # Try SABR stream (WEB client) first
+        try:
+            stream = YoutubeService._build_sabr_stream(url, itag)
+            result_path = YoutubeService._download_stream(stream, temp_dir, itag)
+            logger.info("download_by_itag_completed", extra={
+                "url": url, "itag": itag, "path": str(result_path), "method": "sabr",
+            })
+            return result_path
+        except HTTPError as e:
+            if e.code == 403:
+                raise ValueError(
+                    "Download blocked (HTTP 403). YouTube may require authentication "
+                    "for this audio track. Try a different track or contact the bot admin."
+                ) from e
+            logger.warning("sabr_download_failed_falling_back", extra={
+                "url": url, "itag": itag, "error": str(e),
+            })
+        except Exception as e:
+            logger.warning("sabr_download_failed_falling_back", extra={
+                "url": url, "itag": itag, "error": str(e),
+            })
+
+        # Fallback to default client
+        logger.info("download_by_itag_fallback_default", extra={"url": url, "itag": itag})
+        yt = pytubefix.YouTube(url)
+        stream = yt.streams.get_by_itag(itag)
+        if stream is None:
+            raise ValueError(f"No stream found with itag {itag}")
+
+        result_path = YoutubeService._download_stream(stream, temp_dir, itag)
         logger.info("download_by_itag_completed", extra={
-            "url": url,
-            "itag": itag,
-            "path": str(result_path),
+            "url": url, "itag": itag, "path": str(result_path), "method": "default",
         })
         return result_path
 

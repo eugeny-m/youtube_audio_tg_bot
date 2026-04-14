@@ -3,6 +3,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch, PropertyMock
 
 import pytest
+from urllib.error import HTTPError
 
 from services.youtube import YoutubeService, StreamInfo
 
@@ -196,6 +197,8 @@ class TestGetStreamsWebClient:
         assert stream_infos[0].abr == "160kbps"
         assert stream_infos[1].itag == 140
         assert stream_infos[1].language == "English"
+        assert stream_infos[0].size_mb == 7.0
+        assert stream_infos[1].size_mb == 5.0
 
     def test_returns_multiple_languages(self):
         stream_manifest = [
@@ -307,46 +310,147 @@ class TestGetAvailableStreamsWithFallback:
         assert len(streams) == 1
 
 
-class TestDownloadByItag:
-    def test_downloads_and_returns_path(self, tmp_path):
-        stream = _make_mock_stream(itag=140, default_filename="test_video.mp4")
-        mock_yt = _make_mock_yt(streams_list=[stream])
+class TestBuildSabrStream:
+    def test_returns_stream_for_matching_itag(self):
+        stream_manifest = [
+            _make_mock_sabr_fmt(itag=140, mime_type="audio/mp4"),
+            _make_mock_sabr_fmt(itag=251, mime_type="audio/webm"),
+            _make_mock_sabr_fmt(itag=299, mime_type="video/mp4"),
+        ]
+        mock_yt = _make_mock_web_yt(title="Test", length_seconds="300")
+        mock_stream = MagicMock()
+        mock_stream.itag = 140
 
-        # Make download create the file
+        with patch("services.youtube.pytubefix.YouTube", return_value=mock_yt) as mock_yt_cls, \
+             patch("services.youtube.pytubefix.extract.apply_descrambler", return_value=stream_manifest), \
+             patch("services.youtube.Stream", return_value=mock_stream) as mock_stream_cls:
+            result = YoutubeService._build_sabr_stream("https://youtube.com/watch?v=test", 140)
+
+        assert result == mock_stream
+        mock_yt_cls.assert_called_once_with("https://youtube.com/watch?v=test", client='WEB')
+        mock_stream_cls.assert_called_once_with(
+            stream=stream_manifest[0],
+            monostate=mock_yt.stream_monostate,
+            po_token=mock_yt.po_token,
+            video_playback_ustreamer_config=mock_yt.video_playback_ustreamer_config,
+        )
+
+    def test_raises_for_missing_itag(self):
+        stream_manifest = [
+            _make_mock_sabr_fmt(itag=140, mime_type="audio/mp4"),
+        ]
+        mock_yt = _make_mock_web_yt()
+
+        with patch("services.youtube.pytubefix.YouTube", return_value=mock_yt), \
+             patch("services.youtube.pytubefix.extract.apply_descrambler", return_value=stream_manifest):
+            with pytest.raises(ValueError, match="No SABR audio stream found with itag 999"):
+                YoutubeService._build_sabr_stream("https://youtube.com/watch?v=test", 999)
+
+    def test_skips_video_streams(self):
+        stream_manifest = [
+            _make_mock_sabr_fmt(itag=140, mime_type="video/mp4"),  # video, not audio
+        ]
+        mock_yt = _make_mock_web_yt()
+
+        with patch("services.youtube.pytubefix.YouTube", return_value=mock_yt), \
+             patch("services.youtube.pytubefix.extract.apply_descrambler", return_value=stream_manifest):
+            with pytest.raises(ValueError, match="No SABR audio stream found with itag 140"):
+                YoutubeService._build_sabr_stream("https://youtube.com/watch?v=test", 140)
+
+
+class TestDownloadByItag:
+    def test_sabr_download_succeeds(self, tmp_path):
+        """When SABR stream works, it should be used directly."""
+        sabr_stream = _make_mock_stream(itag=140, default_filename="test_video.mp4")
+
         def fake_download(output_path, filename):
             Path(output_path, filename).touch()
+        sabr_stream.download.side_effect = fake_download
 
-        stream.download.side_effect = fake_download
-
-        with patch("services.youtube.pytubefix.YouTube", return_value=mock_yt):
+        with patch.object(YoutubeService, '_build_sabr_stream', return_value=sabr_stream):
             result = YoutubeService.download_by_itag(
                 "https://youtube.com/watch?v=test", 140, tmp_path
             )
 
         assert result.parent == tmp_path
         assert result.exists()
-        stream.download.assert_called_once()
+        sabr_stream.download.assert_called_once()
 
-    def test_invalid_itag_raises(self, tmp_path):
+    def test_sabr_fails_falls_back_to_default(self, tmp_path):
+        """When SABR fails with generic error, falls back to default client."""
+        default_stream = _make_mock_stream(itag=140, default_filename="test_video.mp4")
+
+        def fake_download(output_path, filename):
+            Path(output_path, filename).touch()
+        default_stream.download.side_effect = fake_download
+
+        mock_yt = _make_mock_yt(streams_list=[default_stream])
+
+        with patch.object(YoutubeService, '_build_sabr_stream', side_effect=Exception("SABR error")), \
+             patch("services.youtube.pytubefix.YouTube", return_value=mock_yt):
+            result = YoutubeService.download_by_itag(
+                "https://youtube.com/watch?v=test", 140, tmp_path
+            )
+
+        assert result.exists()
+        default_stream.download.assert_called_once()
+
+    def test_403_error_raises_informative_message(self, tmp_path):
+        """HTTP 403 from SABR download should raise with auth message, not fallback."""
+        http_error = HTTPError(
+            url="https://example.com", code=403, msg="Forbidden",
+            hdrs=MagicMock(), fp=MagicMock(),
+        )
+
+        with patch.object(YoutubeService, '_build_sabr_stream', side_effect=http_error):
+            with pytest.raises(ValueError, match="HTTP 403"):
+                YoutubeService.download_by_itag(
+                    "https://youtube.com/watch?v=test", 140, tmp_path
+                )
+
+    def test_non_403_http_error_falls_back(self, tmp_path):
+        """Non-403 HTTP errors should fall back to default client."""
+        http_error = HTTPError(
+            url="https://example.com", code=500, msg="Server Error",
+            hdrs=MagicMock(), fp=MagicMock(),
+        )
+
+        default_stream = _make_mock_stream(itag=140, default_filename="test_video.mp4")
+
+        def fake_download(output_path, filename):
+            Path(output_path, filename).touch()
+        default_stream.download.side_effect = fake_download
+
+        mock_yt = _make_mock_yt(streams_list=[default_stream])
+
+        with patch.object(YoutubeService, '_build_sabr_stream', side_effect=http_error), \
+             patch("services.youtube.pytubefix.YouTube", return_value=mock_yt):
+            result = YoutubeService.download_by_itag(
+                "https://youtube.com/watch?v=test", 140, tmp_path
+            )
+
+        assert result.exists()
+
+    def test_invalid_itag_both_clients_raises(self, tmp_path):
+        """When itag not found in either client, raises ValueError."""
         mock_yt = _make_mock_yt(streams_list=[_make_mock_stream(itag=140)])
 
-        with patch("services.youtube.pytubefix.YouTube", return_value=mock_yt):
+        with patch.object(YoutubeService, '_build_sabr_stream', side_effect=ValueError("No SABR")), \
+             patch("services.youtube.pytubefix.YouTube", return_value=mock_yt):
             with pytest.raises(ValueError, match="No stream found with itag 999"):
                 YoutubeService.download_by_itag(
                     "https://youtube.com/watch?v=test", 999, tmp_path
                 )
 
     def test_creates_temp_dir_if_not_exists(self, tmp_path):
-        stream = _make_mock_stream(itag=140, default_filename="test.mp4")
-        mock_yt = _make_mock_yt(streams_list=[stream])
+        sabr_stream = _make_mock_stream(itag=140, default_filename="test.mp4")
 
         def fake_download(output_path, filename):
             Path(output_path, filename).touch()
-
-        stream.download.side_effect = fake_download
+        sabr_stream.download.side_effect = fake_download
 
         new_dir = tmp_path / "subdir"
-        with patch("services.youtube.pytubefix.YouTube", return_value=mock_yt):
+        with patch.object(YoutubeService, '_build_sabr_stream', return_value=sabr_stream):
             result = YoutubeService.download_by_itag(
                 "https://youtube.com/watch?v=test", 140, new_dir
             )
@@ -371,15 +475,14 @@ class TestAsyncWrappers:
 
     @pytest.mark.asyncio
     async def test_async_download_by_itag(self, tmp_path):
-        stream = _make_mock_stream(itag=140, default_filename="test.mp4")
-        mock_yt = _make_mock_yt(streams_list=[stream])
+        sabr_stream = _make_mock_stream(itag=140, default_filename="test.mp4")
 
         def fake_download(output_path, filename):
             Path(output_path, filename).touch()
 
-        stream.download.side_effect = fake_download
+        sabr_stream.download.side_effect = fake_download
 
-        with patch("services.youtube.pytubefix.YouTube", return_value=mock_yt):
+        with patch.object(YoutubeService, '_build_sabr_stream', return_value=sabr_stream):
             result = await YoutubeService.async_download_by_itag(
                 "https://youtube.com/watch?v=test", 140, tmp_path
             )

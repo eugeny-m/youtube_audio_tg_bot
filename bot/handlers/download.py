@@ -203,6 +203,18 @@ async def on_bitrate_selected(
         await callback.answer()
         try:
             file_path = await YoutubeService.async_download_by_itag(url, itag, temp_dir)
+        except ValueError as e:
+            logger.error("download_failed", extra={"video_id": video_id, "error": str(e)})
+            try:
+                await callback.message.edit_text(html.escape(str(e)))
+            except Exception:
+                pass
+            if settings.tg_superuser:
+                await bot.send_message(
+                    chat_id=settings.tg_superuser,
+                    text=f"Download error for {html.escape(url)} (itag={itag}): {html.escape(str(e))}",
+                )
+            return
         except Exception as e:
             logger.error("download_failed", extra={"video_id": video_id, "error": str(e)})
             try:
