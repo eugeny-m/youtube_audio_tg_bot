@@ -24,7 +24,7 @@ cleanup() {
 trap cleanup EXIT
 
 # 1. Check clean working tree
-if [ -n "$(git status --porcelain)" ]; then
+if [ -n "$(git status --porcelain | grep -v '^??')" ]; then
     echo -e "${RED}Error: working tree is not clean. Commit or stash changes first.${NC}"
     exit 1
 fi
