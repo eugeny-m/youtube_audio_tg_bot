@@ -1,0 +1,15 @@
+tests/
+docs/
+__pycache__/
+.git/
+*.pyc
+dev_loop.py
+requirements-dev.txt
+.pytest_cache/
+.idea/
+.venv/
+.ralphex/
+.DS_Store
+*.md
+logs/
+temp_dir/

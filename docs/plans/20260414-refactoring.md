@@ -310,11 +310,11 @@ youtube_listener/           # project root (working directory)
 - Modify: `docker-compose.yml`
 - Create: `.dockerignore`
 
-- [ ] Update `prod.Dockerfile`: `COPY . /app` instead of individual files, update CMD to `python main.py`
-- [ ] Update `docker-compose.yml`: change command to `python main.py`, ensure volume mounts work for `config/` and `logs/`
-- [ ] Create `.dockerignore` to exclude: `tests/`, `docs/`, `__pycache__/`, `.git/`, `*.pyc`, `dev_loop.py`, `requirements-dev.txt`
-- [ ] Verify docker build succeeds: `docker build -f prod.Dockerfile .`
-- [ ] Run tests — must pass before next task
+- [x] Update `prod.Dockerfile`: `COPY . /app` instead of individual files, update CMD to `python main.py`
+- [x] Update `docker-compose.yml`: change command to `python main.py`, ensure volume mounts work for `config/` and `logs/`
+- [x] Create `.dockerignore` to exclude: `tests/`, `docs/`, `__pycache__/`, `.git/`, `*.pyc`, `dev_loop.py`, `requirements-dev.txt`
+- [x] Verify docker build succeeds: `docker build -f prod.Dockerfile .` (skipped - Docker daemon not available in dev environment)
+- [x] Run tests — must pass before next task
 
 ### Task 13: Remove old files and cleanup
 
