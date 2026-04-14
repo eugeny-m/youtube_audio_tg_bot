@@ -235,16 +235,16 @@ youtube_listener/           # project root (working directory)
 - Create: `bot/filters.py`
 - Create: `tests/test_middlewares.py`
 
-- [ ] Create `bot/middlewares/logging.py` with `LoggingMiddleware`:
+- [x] Create `bot/middlewares/logging.py` with `LoggingMiddleware`:
   - Adds `user_id` and `chat_id` to log record via `LoggerAdapter` or `extra` context on each update
-- [ ] Create `bot/middlewares/fsm_timeout.py` with `FSMTimeoutMiddleware(timeout_minutes=10)`:
+- [x] Create `bot/middlewares/fsm_timeout.py` with `FSMTimeoutMiddleware(timeout_minutes=10)`:
   - Check `created_at` in state data, clear state if older than timeout
   - Note: lazy cleanup — only triggers on user's next interaction
-- [ ] Create `bot/filters.py` with `AdminFilter` — checks `from_user.id == settings.tg_superuser`
-- [ ] Write tests for LoggingMiddleware (context bound correctly)
-- [ ] Write tests for FSMTimeoutMiddleware (expired state cleared, fresh state kept, no state = no-op)
-- [ ] Write tests for AdminFilter (superuser passes, others rejected)
-- [ ] Run tests — must pass before next task
+- [x] Create `bot/filters.py` with `AdminFilter` — checks `from_user.id == settings.tg_superuser`
+- [x] Write tests for LoggingMiddleware (context bound correctly)
+- [x] Write tests for FSMTimeoutMiddleware (expired state cleared, fresh state kept, no state = no-op)
+- [x] Write tests for AdminFilter (superuser passes, others rejected)
+- [x] Run tests — must pass before next task
 
 ### Task 9: Create bot handlers — start and admin
 
