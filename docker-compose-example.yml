@@ -9,6 +9,5 @@ services:
       BOT_PROXY: "http://0.0.0.0:8888"
       TG_SUPERUSER: 00000001
     volumes:
-      - ./:/app
       - /etc/youtube_tg_bot:/app/config
       - ./logs:/app/logs
