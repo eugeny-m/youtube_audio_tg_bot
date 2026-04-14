@@ -99,9 +99,9 @@ for fmt in stream_manifest:
 **Files:**
 - Modify: `requirements.txt`
 
-- [ ] Update `pytubefix==9.5.0` → `pytubefix==10.3.8` in `requirements.txt`
-- [ ] Verify no breaking API changes in existing code by running tests
-- [ ] Run tests — must pass before next task
+- [x] Update `pytubefix==9.5.0` → `pytubefix==10.3.8` in `requirements.txt`
+- [x] Verify no breaking API changes in existing code by running tests
+- [x] Run tests — must pass before next task
 
 ### Task 2a: Extract current stream logic into fallback method
 
