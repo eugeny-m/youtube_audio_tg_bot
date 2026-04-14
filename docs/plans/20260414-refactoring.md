@@ -253,17 +253,17 @@ youtube_listener/           # project root (working directory)
 - Create: `bot/handlers/admin.py`
 - Create: `tests/test_handlers_admin.py`
 
-- [ ] Create `bot/handlers/start.py` with Router:
+- [x] Create `bot/handlers/start.py` with Router:
   - `/start` handler: log user, add to DB via UserRepository, send welcome message
-- [ ] Create `bot/handlers/admin.py` with Router + AdminFilter:
+- [x] Create `bot/handlers/admin.py` with Router + AdminFilter:
   - `/admin` handler: show inline keyboard with stats options
   - `admin:stats` callback: total stats from UserRepository
   - `admin:top_users` callback: top 20 users
   - `admin:weekly` callback: last 7 days stats
   - Format stats as readable text in code blocks
-- [ ] Write tests for start handler (user added to DB, welcome sent)
-- [ ] Write tests for admin handler (filter works, stats displayed, non-admin rejected)
-- [ ] Run tests — must pass before next task
+- [x] Write tests for start handler (user added to DB, welcome sent)
+- [x] Write tests for admin handler (filter works, stats displayed, non-admin rejected)
+- [x] Run tests — must pass before next task
 
 ### Task 10: Create bot handler — download flow with FSM
 
