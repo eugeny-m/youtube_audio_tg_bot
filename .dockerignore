@@ -13,3 +13,7 @@ requirements-dev.txt
 *.md
 logs/
 temp_dir/
+.env
+.env.*
+docker-compose*.yml
+config/

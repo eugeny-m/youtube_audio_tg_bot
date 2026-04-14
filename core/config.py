@@ -5,7 +5,7 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    telegram_bot_token: str = ""
+    telegram_bot_token: str
     tg_superuser: int = 0
     bot_proxy: Optional[str] = None
     bot_username: str = "get_me_youtube_audio_bot"

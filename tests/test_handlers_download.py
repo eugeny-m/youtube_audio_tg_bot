@@ -46,7 +46,7 @@ def make_callback(user: User | None = None, data: str = "track:Default") -> Magi
     cb = MagicMock(spec=CallbackQuery)
     cb.from_user = user or make_user()
     cb.data = data
-    cb.message = MagicMock()
+    cb.message = MagicMock(spec=Message)
     cb.message.edit_text = AsyncMock()
     cb.message.answer_audio = AsyncMock()
     cb.answer = AsyncMock()
@@ -199,9 +199,10 @@ class TestOnTrackSelected:
             "title": "Test",
             "duration_sec": 120.0,
             "streams": stream_dicts,
+            "track_languages": ["English", "Spanish"],
             "created_at": 1000.0,
         })
-        cb = make_callback(data="track:English")
+        cb = make_callback(data="track:0")
 
         await on_track_selected(cb, state)
 
@@ -229,9 +230,10 @@ class TestOnTrackSelected:
             "title": "Test",
             "duration_sec": 120.0,
             "streams": stream_dicts,
+            "track_languages": [None, "Spanish"],
             "created_at": 1000.0,
         })
-        cb = make_callback(data="track:Default")
+        cb = make_callback(data="track:0")
 
         await on_track_selected(cb, state)
 

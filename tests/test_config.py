@@ -8,10 +8,10 @@ from core.config import Settings
 
 class TestSettingsDefaults:
     def test_default_values(self, monkeypatch):
-        monkeypatch.delenv("TELEGRAM_BOT_TOKEN", raising=False)
+        monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "test-token")
         monkeypatch.delenv("TG_SUPERUSER", raising=False)
         s = Settings()
-        assert s.telegram_bot_token == ""
+        assert s.telegram_bot_token == "test-token"
         assert s.tg_superuser == 0
         assert s.bot_proxy is None
         assert s.bot_username == "get_me_youtube_audio_bot"
@@ -21,6 +21,11 @@ class TestSettingsDefaults:
         assert s.debug is False
         assert s.log_dir == Path("logs")
         assert s.db_path == Path("config/bot.db")
+
+    def test_missing_token_raises(self, monkeypatch):
+        monkeypatch.delenv("TELEGRAM_BOT_TOKEN", raising=False)
+        with pytest.raises(Exception):
+            Settings()
 
 
 class TestSettingsFromEnv:

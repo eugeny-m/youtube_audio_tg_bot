@@ -14,16 +14,13 @@ class UserRepository:
     def __init__(self, db_path: Path):
         self.db_path = str(db_path)
 
-    async def _connect(self) -> aiosqlite.Connection:
-        db = await aiosqlite.connect(self.db_path)
-        db.row_factory = aiosqlite.Row
-        return db
-
     async def add_user(self, user_id: int, username: str | None = None) -> None:
-        """Add a user, ignoring if already exists."""
+        """Add a user, or update username if already exists."""
         async with aiosqlite.connect(self.db_path) as db:
             await db.execute(
-                "INSERT OR IGNORE INTO users (user_id, username) VALUES (?, ?)",
+                """INSERT INTO users (user_id, username) VALUES (?, ?)
+                   ON CONFLICT(user_id) DO UPDATE SET username = excluded.username
+                   WHERE excluded.username IS NOT NULL""",
                 (user_id, username),
             )
             await db.commit()

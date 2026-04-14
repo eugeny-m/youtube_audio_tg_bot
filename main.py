@@ -60,7 +60,7 @@ async def main() -> None:
     logger.info("bot_started", extra={"username": settings.bot_username})
 
     try:
-        await dp.start_polling(bot)
+        await dp.start_polling(bot, polling_timeout=40)
     finally:
         await bot.session.close()
 

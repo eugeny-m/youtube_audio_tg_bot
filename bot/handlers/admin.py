@@ -1,3 +1,4 @@
+import html
 import logging
 
 from aiogram import F, Router
@@ -25,6 +26,9 @@ async def cmd_admin(message: Message) -> None:
 
 async def on_stats(callback: CallbackQuery, repo: UserRepository) -> None:
     """Show overall stats."""
+    if not isinstance(callback.message, Message):
+        await callback.answer("Message expired.")
+        return
     stats = await repo.get_stats()
     text = (
         "Overall Stats\n"
@@ -38,6 +42,9 @@ async def on_stats(callback: CallbackQuery, repo: UserRepository) -> None:
 
 async def on_top_users(callback: CallbackQuery, repo: UserRepository) -> None:
     """Show top 20 users by usage."""
+    if not isinstance(callback.message, Message):
+        await callback.answer("Message expired.")
+        return
     users = await repo.get_top_users(limit=20)
     if not users:
         await callback.message.edit_text("No users yet.")
@@ -46,7 +53,7 @@ async def on_top_users(callback: CallbackQuery, repo: UserRepository) -> None:
 
     lines = ["Top Users"]
     for i, u in enumerate(users, 1):
-        name = u["username"] or str(u["user_id"])
+        name = html.escape(u["username"]) if u["username"] else str(u["user_id"])
         lines.append(f"{i}. {name} - {u['usage_count']} downloads")
 
     await callback.message.edit_text("\n".join(lines))
@@ -55,6 +62,9 @@ async def on_top_users(callback: CallbackQuery, repo: UserRepository) -> None:
 
 async def on_weekly(callback: CallbackQuery, repo: UserRepository) -> None:
     """Show weekly stats."""
+    if not isinstance(callback.message, Message):
+        await callback.answer("Message expired.")
+        return
     stats = await repo.get_weekly_stats()
     text = (
         "Weekly Stats (last 7 days)\n"

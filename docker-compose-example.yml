@@ -3,13 +3,12 @@ services:
   youtube_bot:
     image: youtube_tg:latest
     container_name: youtube_tg
-    command: python youtube_bot.py
-    #command: python dev_loop.py
+    command: python main.py
     environment:
       TELEGRAM_BOT_TOKEN: your-token-here
       BOT_PROXY: "http://0.0.0.0:8888"
       TG_SUPERUSER: 00000001
-      PRODUCTION: 1
     volumes:
       - ./:/app
       - /etc/youtube_tg_bot:/app/config
+      - ./logs:/app/logs

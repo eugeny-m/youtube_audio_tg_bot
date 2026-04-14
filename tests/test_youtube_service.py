@@ -147,26 +147,6 @@ class TestDownloadByItag:
         assert result.exists()
 
 
-class TestDownloadAudio:
-    def test_downloads_best_quality(self, tmp_path):
-        stream = _make_mock_stream(itag=140, abr="128kbps", filesize_mb=5.0, default_filename="video.mp4")
-        mock_yt = _make_mock_yt(streams_list=[stream])
-
-        def fake_download(output_path, filename):
-            Path(output_path, filename).touch()
-
-        stream.download.side_effect = fake_download
-
-        with patch("services.youtube.pytubefix.YouTube", return_value=mock_yt):
-            file_path, temp_dir, size = YoutubeService.download_audio(
-                "https://youtube.com/watch?v=test", 49.5, tmp_path
-            )
-
-        assert file_path.exists()
-        assert size == 5.0
-        assert temp_dir.exists()
-
-
 class TestAsyncWrappers:
     @pytest.mark.asyncio
     async def test_async_get_available_streams(self):

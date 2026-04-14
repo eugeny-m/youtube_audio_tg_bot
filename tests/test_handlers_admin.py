@@ -45,7 +45,7 @@ def make_callback(user: User | None = None, data: str = "admin:stats") -> MagicM
     cb = MagicMock(spec=CallbackQuery)
     cb.from_user = user or make_user()
     cb.data = data
-    cb.message = MagicMock()
+    cb.message = MagicMock(spec=Message)
     cb.message.edit_text = AsyncMock()
     cb.answer = AsyncMock()
     return cb

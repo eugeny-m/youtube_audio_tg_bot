@@ -182,7 +182,7 @@ class TestMissingFiles:
 
     @pytest.mark.asyncio
     async def test_only_bot_usage_exists(self, db_path, config_dir):
-        """Migration works with only bot_usage.txt present."""
+        """Migration works with only bot_usage.txt present - users auto-created for usage records."""
         write_txt(config_dir / "bot_usage.txt", ["111"])
 
         await migrate_from_txt(db_path, config_dir)
@@ -192,7 +192,7 @@ class TestMissingFiles:
                 users_count = (await cur.fetchone())[0]
             async with db.execute("SELECT COUNT(*) FROM usage_log") as cur:
                 usage_count = (await cur.fetchone())[0]
-        assert users_count == 0
+        assert users_count == 1  # user auto-created to maintain FK integrity
         assert usage_count == 1
 
     @pytest.mark.asyncio

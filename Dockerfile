@@ -14,7 +14,7 @@ RUN pip install --upgrade pip
 RUN pip3 install --no-cache-dir -r requirements.txt
 
 # Copy the current directory contents into the container at /app
-COPY youtube_bot.py /app
+COPY . /app
 
 # Define the command to run the bot when the container starts
-CMD ["python3", "youtube_bot.py"]
+CMD ["python", "main.py"]

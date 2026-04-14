@@ -4,7 +4,7 @@ from typing import Any, Awaitable, Callable, Dict
 
 from aiogram import BaseMiddleware
 from aiogram.fsm.context import FSMContext
-from aiogram.types import TelegramObject
+from aiogram.types import CallbackQuery, Message, TelegramObject
 
 
 logger = logging.getLogger(__name__)
@@ -44,5 +44,16 @@ class FSMTimeoutMiddleware(BaseMiddleware):
                             },
                         )
                         await state.clear()
+                        # Skip the handler — state filters already matched
+                        # the now-cleared state, so the handler would fail.
+                        if isinstance(event, CallbackQuery):
+                            await event.answer()
+                            if event.message and isinstance(event.message, Message):
+                                await event.message.edit_text(
+                                    "Session expired. Please send the link again."
+                                )
+                        elif hasattr(event, "answer"):
+                            await event.answer("Session expired. Please send the link again.")
+                        return None
 
         return await handler(event, data)

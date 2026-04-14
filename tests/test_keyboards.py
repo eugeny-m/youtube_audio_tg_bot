@@ -1,6 +1,6 @@
 import pytest
 
-from bot.keyboards import tracks_keyboard, bitrate_keyboard
+from bot.keyboards import tracks_keyboard, bitrate_keyboard, get_track_languages
 from services.youtube import StreamInfo
 
 
@@ -32,8 +32,8 @@ class TestTracksKeyboard:
     def test_callback_data_format(self, sample_streams):
         kb = tracks_keyboard(sample_streams)
         callbacks = [btn.callback_data for row in kb.inline_keyboard for btn in row]
-        assert "track:English" in callbacks
-        assert "track:Spanish" in callbacks
+        assert "track:0" in callbacks
+        assert "track:1" in callbacks
 
     def test_default_label_for_none_language(self, single_language_streams):
         kb = tracks_keyboard(single_language_streams)
@@ -43,7 +43,7 @@ class TestTracksKeyboard:
     def test_callback_data_for_none_language(self, single_language_streams):
         kb = tracks_keyboard(single_language_streams)
         callbacks = [btn.callback_data for row in kb.inline_keyboard for btn in row]
-        assert callbacks == ["track:Default"]
+        assert callbacks == ["track:0"]
 
     def test_empty_streams(self):
         kb = tracks_keyboard([])
@@ -65,16 +65,16 @@ class TestBitrateKeyboard:
 
     def test_all_streams_have_buttons(self, sample_streams):
         kb = bitrate_keyboard(sample_streams)
-        # 1 best + 3 individual
+        # 1 best + 2 individual (best stream excluded from individual list)
         buttons = [btn for row in kb.inline_keyboard for btn in row]
-        assert len(buttons) == 4
+        assert len(buttons) == 3
 
     def test_bitrate_callback_data_format(self, sample_streams):
         kb = bitrate_keyboard(sample_streams)
         callbacks = [btn.callback_data for row in kb.inline_keyboard for btn in row]
         assert "bitrate:best" in callbacks
         assert "bitrate:140" in callbacks
-        assert "bitrate:251" in callbacks
+        # itag 251 is the best stream, so it only appears as "bitrate:best"
         assert "bitrate:250" in callbacks
 
     def test_size_displayed_in_buttons(self, sample_streams):
@@ -89,7 +89,6 @@ class TestBitrateKeyboard:
         streams = [StreamInfo(itag=140, language=None, abr="128kbps", size_mb=3.5)]
         kb = bitrate_keyboard(streams)
         buttons = [btn for row in kb.inline_keyboard for btn in row]
-        # 1 best + 1 individual
-        assert len(buttons) == 2
+        # Only 1 best button (single stream is the best, so no duplicates)
+        assert len(buttons) == 1
         assert buttons[0].callback_data == "bitrate:best"
-        assert buttons[1].callback_data == "bitrate:140"

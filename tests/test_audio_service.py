@@ -3,7 +3,7 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 
-from services.audio import split_audio_ffmpeg, prepare_files_to_send, async_split_audio_ffmpeg, async_prepare_files_to_send
+from services.audio import split_audio_ffmpeg, prepare_files_to_send, async_prepare_files_to_send
 
 
 class TestSplitAudioFfmpeg:
@@ -95,6 +95,18 @@ class TestSplitAudioFfmpeg:
         assert all(c.suffix == ".m4a" for c in chunks)
 
 
+    def test_zero_max_size_raises(self, tmp_path):
+        input_file = tmp_path / "audio.mp4"
+        input_file.write_bytes(b"\x00" * (5 * 1024 * 1024))
+
+        ffprobe_result = MagicMock()
+        ffprobe_result.stdout = "60.0\n"
+
+        with patch("services.audio.subprocess.run", return_value=ffprobe_result):
+            with pytest.raises(ValueError, match="Invalid params"):
+                split_audio_ffmpeg(input_file, max_size_mb=0)
+
+
 class TestPrepareFilesToSend:
     def test_under_limit_returns_single_file(self, tmp_path):
         f = tmp_path / "audio.mp4"
@@ -122,25 +134,6 @@ class TestPrepareFilesToSend:
 
 
 class TestAsyncWrappers:
-    @pytest.mark.asyncio
-    async def test_async_split_audio_ffmpeg(self, tmp_path):
-        input_file = tmp_path / "audio.mp4"
-        input_file.write_bytes(b"\x00" * (10 * 1024 * 1024))
-
-        ffprobe_result = MagicMock()
-        ffprobe_result.stdout = "120.0\n"
-
-        def fake_run(cmd, **kwargs):
-            if cmd[0] == "ffprobe":
-                return ffprobe_result
-            Path(cmd[-1]).touch()
-            return MagicMock(returncode=0)
-
-        with patch("services.audio.subprocess.run", side_effect=fake_run):
-            chunks = await async_split_audio_ffmpeg(input_file, max_size_mb=5.0)
-
-        assert len(chunks) == 2
-
     @pytest.mark.asyncio
     async def test_async_prepare_files_to_send_under_limit(self, tmp_path):
         f = tmp_path / "audio.mp4"

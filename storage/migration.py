@@ -13,6 +13,7 @@ async def migrate_from_txt(db_path: Path, config_dir: Path) -> None:
     Reads first_visit_ids.txt and bot_usage.txt, imports into users and usage_log tables.
     Renames source files to .txt.migrated after success.
     Idempotent: skips if .txt files don't exist or .txt.migrated already exists.
+    Uses a migrations table to track completion atomically with data inserts.
     """
     first_visit_file = config_dir / "first_visit_ids.txt"
     bot_usage_file = config_dir / "bot_usage.txt"
@@ -20,8 +21,30 @@ async def migrate_from_txt(db_path: Path, config_dir: Path) -> None:
     migration_timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
 
     async with aiosqlite.connect(str(db_path)) as db:
+        # Create migrations tracking table
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS migrations (
+                name TEXT PRIMARY KEY,
+                applied_at TEXT NOT NULL DEFAULT (datetime('now'))
+            )
+        """)
+
+        # Check if already completed (handles crash between commit and file rename)
+        async with db.execute(
+            "SELECT 1 FROM migrations WHERE name = 'txt_to_sqlite'"
+        ) as cursor:
+            if await cursor.fetchone():
+                logger.info("migration_already_applied", extra={"migration": "txt_to_sqlite"})
+                # Still rename files if they exist (idempotent cleanup)
+                _rename_if_exists(first_visit_file)
+                _rename_if_exists(bot_usage_file)
+                return
+
         await _migrate_first_visit(db, first_visit_file, migration_timestamp)
         await _migrate_bot_usage(db, bot_usage_file)
+        await db.execute(
+            "INSERT INTO migrations (name) VALUES ('txt_to_sqlite')"
+        )
         await db.commit()
 
     # Rename files after successful migration
@@ -61,6 +84,11 @@ async def _migrate_bot_usage(db: aiosqlite.Connection, file_path: Path) -> None:
         logger.info("no_usage_to_migrate", extra={"file": str(file_path)})
         return
 
+    # Ensure all referenced users exist (they may not be in first_visit_ids.txt)
+    await db.executemany(
+        "INSERT OR IGNORE INTO users (user_id, username, first_seen_at) VALUES (?, NULL, datetime('now'))",
+        [(uid,) for uid in set(user_ids)],
+    )
     await db.executemany(
         "INSERT INTO usage_log (user_id, video_id) VALUES (?, NULL)",
         [(uid,) for uid in user_ids],

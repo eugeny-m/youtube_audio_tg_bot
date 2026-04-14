@@ -20,17 +20,24 @@ def split_audio_ffmpeg(input_path: Path, max_size_mb: float) -> list[Path]:
         "max_size_mb": max_size_mb,
     })
 
-    result = subprocess.run(
-        ['ffprobe', '-v', 'error', '-show_entries',
-         'format=duration', '-of', 'default=noprint_wrappers=1:nokey=1',
-         str(input_path)],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-    )
-    duration = float(result.stdout.strip())
+    try:
+        result = subprocess.run(
+            ['ffprobe', '-v', 'error', '-show_entries',
+             'format=duration', '-of', 'default=noprint_wrappers=1:nokey=1',
+             str(input_path)],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            check=True,
+            timeout=60,
+        )
+        duration = float(result.stdout.strip())
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, ValueError) as e:
+        raise ValueError(f"Failed to get duration from {input_path}: {e}") from e
 
     file_size_mb = os.path.getsize(input_path) / (1024 * 1024)
+    if file_size_mb <= 0 or duration <= 0 or max_size_mb <= 0:
+        raise ValueError(f"Invalid params: duration={duration}, size={file_size_mb}MB, max={max_size_mb}MB")
     seconds_per_chunk = duration * (max_size_mb / file_size_mb)
     num_chunks = math.ceil(duration / seconds_per_chunk)
 
@@ -50,7 +57,7 @@ def split_audio_ffmpeg(input_path: Path, max_size_mb: float) -> list[Path]:
         output_path = temp_dir / f"{input_path.stem}_{i:02}{suffix}"
 
         cmd = [
-            'ffmpeg', '-v', 'error',
+            'ffmpeg', '-y', '-v', 'error',
             '-ss', str(start_time),
             '-t', str(seconds_per_chunk),
             '-i', str(input_path),
@@ -71,8 +78,9 @@ def split_audio_ffmpeg(input_path: Path, max_size_mb: float) -> list[Path]:
                 stderr=subprocess.PIPE,
                 text=True,
                 check=True,
+                timeout=300,
             )
-        except subprocess.CalledProcessError as e:
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
             logger.error("split_chunk_failed", extra={
                 "chunk": i + 1,
                 "stderr": e.stderr,
@@ -96,11 +104,6 @@ def prepare_files_to_send(temp_file: Path, filesize_mb: float, max_size_mb: floa
     if filesize_mb <= max_size_mb:
         return [temp_file]
     return split_audio_ffmpeg(temp_file, max_size_mb)
-
-
-async def async_split_audio_ffmpeg(input_path: Path, max_size_mb: float) -> list[Path]:
-    """Async wrapper for split_audio_ffmpeg using asyncio.to_thread()."""
-    return await asyncio.to_thread(split_audio_ffmpeg, input_path, max_size_mb)
 
 
 async def async_prepare_files_to_send(temp_file: Path, filesize_mb: float, max_size_mb: float) -> list[Path]:

@@ -2,7 +2,7 @@ import logging
 from typing import Any, Awaitable, Callable, Dict
 
 from aiogram import BaseMiddleware
-from aiogram.types import TelegramObject, Update
+from aiogram.types import CallbackQuery, Message, TelegramObject
 
 
 logger = logging.getLogger(__name__)
@@ -19,17 +19,16 @@ class LoggingMiddleware(BaseMiddleware):
     ) -> Any:
         extra: Dict[str, Any] = {}
 
-        if isinstance(event, Update):
-            update_event = (
-                event.message
-                or event.callback_query
-                or event.edited_message
-                or event.inline_query
-            )
-            if update_event and hasattr(update_event, "from_user") and update_event.from_user:
-                extra["user_id"] = update_event.from_user.id
-            if hasattr(update_event, "chat") and update_event and update_event.chat:
-                extra["chat_id"] = update_event.chat.id
+        if isinstance(event, Message):
+            if event.from_user:
+                extra["user_id"] = event.from_user.id
+            if event.chat:
+                extra["chat_id"] = event.chat.id
+        elif isinstance(event, CallbackQuery):
+            if event.from_user:
+                extra["user_id"] = event.from_user.id
+            if event.message and event.message.chat:
+                extra["chat_id"] = event.message.chat.id
 
         if extra:
             logger.info("update_received", extra=extra)

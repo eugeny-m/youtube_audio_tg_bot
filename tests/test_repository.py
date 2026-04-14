@@ -62,12 +62,22 @@ class TestAddUser:
         assert count == 1
 
     @pytest.mark.asyncio
-    async def test_duplicate_user_ignored(self, repo):
-        """INSERT OR IGNORE: adding same user_id twice does not raise or duplicate."""
+    async def test_duplicate_user_updates_username(self, repo):
+        """Adding same user_id twice updates the username."""
         await repo.add_user(123, "alice")
         await repo.add_user(123, "alice_updated")
         count = await repo.get_users_count()
         assert count == 1
+        top = await repo.get_top_users(1)
+        assert top[0]["username"] == "alice_updated"
+
+    @pytest.mark.asyncio
+    async def test_add_user_null_username_does_not_overwrite(self, repo):
+        """Adding user with None username does not overwrite existing username."""
+        await repo.add_user(123, "alice")
+        await repo.add_user(123, None)
+        top = await repo.get_top_users(1)
+        assert top[0]["username"] == "alice"
 
 
 class TestLogUsage:

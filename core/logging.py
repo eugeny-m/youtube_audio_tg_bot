@@ -11,7 +11,11 @@ def setup_logging(settings) -> None:
     os.makedirs(log_dir, exist_ok=True)
 
     root_logger = logging.getLogger()
-    root_logger.setLevel(logging.DEBUG if settings.debug else logging.INFO)
+    if settings.debug:
+        effective_level = logging.DEBUG
+    else:
+        effective_level = getattr(logging, settings.log_level.upper(), logging.INFO)
+    root_logger.setLevel(effective_level)
 
     # Clear existing handlers to avoid duplicates on re-init
     root_logger.handlers.clear()
@@ -46,7 +50,7 @@ def setup_logging(settings) -> None:
         console_handler.setLevel(logging.DEBUG)
         console_fmt = "%(asctime)s %(name)s %(levelname)s %(pathname)s:%(lineno)d %(message)s"
     else:
-        console_handler.setLevel(logging.INFO)
+        console_handler.setLevel(effective_level)
         console_fmt = "%(asctime)s %(levelname)s %(name)s %(message)s"
     console_handler.setFormatter(logging.Formatter(console_fmt))
 
