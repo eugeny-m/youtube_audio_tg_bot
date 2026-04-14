@@ -118,16 +118,16 @@ for fmt in stream_manifest:
 **Files:**
 - Modify: `services/youtube.py`
 
-- [ ] Add `_get_streams_web_client(url)` static method:
+- [x] Add `_get_streams_web_client(url)` static method:
   - Creates `YouTube(url, client='WEB')`
   - Accesses `yt.vid_info['streamingData']`
   - Calls `extract.apply_descrambler(streaming_data)`
   - Filters SABR audio streams (`is_sabr=True`, mimeType contains 'audio')
   - Creates `Stream()` objects manually using `yt.stream_monostate`, `yt.po_token`, `yt.video_playback_ustreamer_config`
   - Returns `(title, duration_sec, list[StreamInfo])`
-- [ ] Write tests for `_get_streams_web_client()` with mocked `YouTube`, `extract`, `Stream`
-- [ ] Write test that `_get_streams_web_client()` returns multiple languages
-- [ ] Run tests — must pass before next task
+- [x] Write tests for `_get_streams_web_client()` with mocked `YouTube`, `extract`, `Stream`
+- [x] Write test that `_get_streams_web_client()` returns multiple languages
+- [x] Run tests — must pass before next task
 
 ### Task 2c: Wire up WEB client with fallback
 

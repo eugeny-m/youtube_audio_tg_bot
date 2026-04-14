@@ -134,6 +134,146 @@ class TestGetStreamsDefaultClient:
                 YoutubeService._get_streams_default_client("https://youtube.com/watch?v=test")
 
 
+def _make_mock_sabr_fmt(itag=140, mime_type="audio/mp4", is_sabr=True):
+    """Create a format dict as returned by extract.apply_descrambler for SABR streams."""
+    return {
+        'itag': itag,
+        'mimeType': mime_type,
+        'is_sabr': is_sabr,
+    }
+
+
+def _make_mock_web_yt(title="Test Video", length_seconds="300", streaming_data=None, stream_manifest=None):
+    """Create a mock YouTube object for WEB client tests."""
+    yt = MagicMock()
+    yt.vid_info = {
+        'videoDetails': {
+            'title': title,
+            'lengthSeconds': length_seconds,
+        },
+        'streamingData': streaming_data or {},
+    }
+    yt.stream_monostate = MagicMock()
+    yt.po_token = "fake_po_token"
+    yt.video_playback_ustreamer_config = "fake_config"
+    return yt
+
+
+class TestGetStreamsWebClient:
+    def test_returns_sabr_audio_streams(self):
+        stream_manifest = [
+            _make_mock_sabr_fmt(itag=140, mime_type="audio/mp4"),
+            _make_mock_sabr_fmt(itag=251, mime_type="audio/webm"),
+            _make_mock_sabr_fmt(itag=299, mime_type="video/mp4"),  # video, should be excluded
+        ]
+        mock_yt = _make_mock_web_yt(title="Multi Track", length_seconds="600")
+
+        mock_stream_140 = MagicMock()
+        mock_stream_140.itag = 140
+        mock_stream_140.abr = "128kbps"
+        mock_stream_140.filesize_mb = 5.0
+        mock_stream_140.audio_track_name = "English"
+
+        mock_stream_251 = MagicMock()
+        mock_stream_251.itag = 251
+        mock_stream_251.abr = "160kbps"
+        mock_stream_251.filesize_mb = 7.0
+        mock_stream_251.audio_track_name = "Russian"
+
+        stream_objects = iter([mock_stream_140, mock_stream_251])
+
+        with patch("services.youtube.pytubefix.YouTube", return_value=mock_yt), \
+             patch("services.youtube.pytubefix.extract.apply_descrambler", return_value=stream_manifest), \
+             patch("services.youtube.Stream", side_effect=lambda **kwargs: next(stream_objects)):
+            title, duration, stream_infos = YoutubeService._get_streams_web_client("https://youtube.com/watch?v=test")
+
+        assert title == "Multi Track"
+        assert duration == 600.0
+        assert len(stream_infos) == 2
+        # Sorted by abr descending: 160kbps first, then 128kbps
+        assert stream_infos[0].itag == 251
+        assert stream_infos[0].language == "Russian"
+        assert stream_infos[0].abr == "160kbps"
+        assert stream_infos[1].itag == 140
+        assert stream_infos[1].language == "English"
+
+    def test_returns_multiple_languages(self):
+        stream_manifest = [
+            _make_mock_sabr_fmt(itag=140, mime_type="audio/mp4"),
+            _make_mock_sabr_fmt(itag=251, mime_type="audio/mp4"),
+            _make_mock_sabr_fmt(itag=252, mime_type="audio/mp4"),
+        ]
+        mock_yt = _make_mock_web_yt(title="Polyglot Video", length_seconds="120")
+
+        mock_streams = []
+        for itag, lang, abr in [(140, "English", "128kbps"), (251, "Russian", "128kbps"), (252, "Spanish", "128kbps")]:
+            s = MagicMock()
+            s.itag = itag
+            s.abr = abr
+            s.filesize_mb = 5.0
+            s.audio_track_name = lang
+            mock_streams.append(s)
+
+        stream_iter = iter(mock_streams)
+
+        with patch("services.youtube.pytubefix.YouTube", return_value=mock_yt), \
+             patch("services.youtube.pytubefix.extract.apply_descrambler", return_value=stream_manifest), \
+             patch("services.youtube.Stream", side_effect=lambda **kwargs: next(stream_iter)):
+            title, duration, stream_infos = YoutubeService._get_streams_web_client("https://youtube.com/watch?v=test")
+
+        assert len(stream_infos) == 3
+        languages = {s.language for s in stream_infos}
+        assert languages == {"English", "Russian", "Spanish"}
+
+    def test_no_audio_streams_raises(self):
+        stream_manifest = [
+            _make_mock_sabr_fmt(itag=299, mime_type="video/mp4"),  # only video
+        ]
+        mock_yt = _make_mock_web_yt()
+
+        with patch("services.youtube.pytubefix.YouTube", return_value=mock_yt), \
+             patch("services.youtube.pytubefix.extract.apply_descrambler", return_value=stream_manifest):
+            with pytest.raises(ValueError, match="No audio streams available from WEB client"):
+                YoutubeService._get_streams_web_client("https://youtube.com/watch?v=test")
+
+    def test_uses_web_client(self):
+        stream_manifest = [_make_mock_sabr_fmt(itag=140, mime_type="audio/mp4")]
+        mock_yt = _make_mock_web_yt()
+        mock_stream = MagicMock()
+        mock_stream.itag = 140
+        mock_stream.abr = "128kbps"
+        mock_stream.filesize_mb = 5.0
+        mock_stream.audio_track_name = None
+
+        with patch("services.youtube.pytubefix.YouTube", return_value=mock_yt) as mock_yt_cls, \
+             patch("services.youtube.pytubefix.extract.apply_descrambler", return_value=stream_manifest), \
+             patch("services.youtube.Stream", return_value=mock_stream):
+            YoutubeService._get_streams_web_client("https://youtube.com/watch?v=test")
+
+        mock_yt_cls.assert_called_once_with("https://youtube.com/watch?v=test", client='WEB')
+
+    def test_passes_monostate_and_tokens_to_stream(self):
+        stream_manifest = [_make_mock_sabr_fmt(itag=140, mime_type="audio/mp4")]
+        mock_yt = _make_mock_web_yt()
+        mock_stream = MagicMock()
+        mock_stream.itag = 140
+        mock_stream.abr = "128kbps"
+        mock_stream.filesize_mb = 5.0
+        mock_stream.audio_track_name = None
+
+        with patch("services.youtube.pytubefix.YouTube", return_value=mock_yt), \
+             patch("services.youtube.pytubefix.extract.apply_descrambler", return_value=stream_manifest), \
+             patch("services.youtube.Stream", return_value=mock_stream) as mock_stream_cls:
+            YoutubeService._get_streams_web_client("https://youtube.com/watch?v=test")
+
+        mock_stream_cls.assert_called_once_with(
+            stream=stream_manifest[0],
+            monostate=mock_yt.stream_monostate,
+            po_token=mock_yt.po_token,
+            video_playback_ustreamer_config=mock_yt.video_playback_ustreamer_config,
+        )
+
+
 class TestDownloadByItag:
     def test_downloads_and_returns_path(self, tmp_path):
         stream = _make_mock_stream(itag=140, default_filename="test_video.mp4")

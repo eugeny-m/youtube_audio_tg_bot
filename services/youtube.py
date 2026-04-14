@@ -6,6 +6,7 @@ from typing import Optional
 
 import pytubefix
 import pytubefix.extract
+from pytubefix.streams import Stream
 from slugify import slugify
 
 
@@ -58,6 +59,57 @@ class YoutubeService:
             "url": url,
             "title": title,
             "stream_count": len(stream_list),
+        })
+        return title, duration_sec, stream_list
+
+    @staticmethod
+    def _get_streams_web_client(url: str) -> tuple[str, float, list[StreamInfo]]:
+        """Get available audio streams using WEB client with SABR stream extraction.
+
+        This discovers all audio tracks including dubbed/localized ones that are
+        only available via the WEB client's SABR protocol.
+
+        Returns (title, duration_sec, list of StreamInfo).
+        """
+        logger.info("getting_streams_web_client", extra={"url": url})
+        yt = pytubefix.YouTube(url, client='WEB')
+        vid_info = yt.vid_info
+        streaming_data = vid_info['streamingData']
+        stream_manifest = pytubefix.extract.apply_descrambler(streaming_data)
+
+        title = vid_info['videoDetails']['title']
+        duration_sec = float(vid_info['videoDetails']['lengthSeconds'])
+
+        stream_list = []
+        for fmt in stream_manifest:
+            mime_type = fmt.get('mimeType', '')
+            if 'audio' not in mime_type:
+                continue
+            stream = Stream(
+                stream=fmt,
+                monostate=yt.stream_monostate,
+                po_token=yt.po_token,
+                video_playback_ustreamer_config=yt.video_playback_ustreamer_config,
+            )
+            lang = getattr(stream, 'audio_track_name', None)
+            stream_list.append(StreamInfo(
+                itag=stream.itag,
+                language=lang,
+                abr=stream.abr,
+                size_mb=stream.filesize_mb,
+            ))
+
+        if not stream_list:
+            raise ValueError("No audio streams available from WEB client for this URL")
+
+        # Sort by abr descending (same as default client)
+        stream_list.sort(key=lambda s: s.abr, reverse=True)
+
+        logger.info("streams_found_web_client", extra={
+            "url": url,
+            "title": title,
+            "stream_count": len(stream_list),
+            "languages": list(set(s.language for s in stream_list if s.language)),
         })
         return title, duration_sec, stream_list
 
