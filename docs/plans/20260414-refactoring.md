@@ -336,16 +336,16 @@ youtube_listener/           # project root (working directory)
 
 ### Task 14: Verify acceptance criteria
 
-- [ ] Verify modular structure: all code in `bot/`, `services/`, `core/`, `storage/`
-- [ ] Verify JSON logging works: file handlers output JSON, console outputs human-readable
-- [ ] Verify log rotation: RotatingFileHandler configured at 5MB
-- [ ] Verify inline buttons UX: URL → track selection → bitrate selection → download
-- [ ] Verify FSM timeout: stale states cleared on next interaction after 10 minutes
-- [ ] Verify SQLite storage: users and usage_log populated correctly
-- [ ] Verify migration: old txt data imported to SQLite (username=NULL, first_seen_at=migration time)
-- [ ] Verify admin panel: `/admin` shows buttons, stats/top/weekly work
-- [ ] Verify async: downloads don't block event loop (test with concurrent requests)
-- [ ] Run full test suite: `pytest tests/ -v`
+- [x] Verify modular structure: all code in `bot/`, `services/`, `core/`, `storage/`
+- [x] Verify JSON logging works: file handlers output JSON, console outputs human-readable
+- [x] Verify log rotation: RotatingFileHandler configured at 5MB
+- [x] Verify inline buttons UX: URL → track selection → bitrate selection → download
+- [x] Verify FSM timeout: stale states cleared on next interaction after 10 minutes
+- [x] Verify SQLite storage: users and usage_log populated correctly
+- [x] Verify migration: old txt data imported to SQLite (username=NULL, first_seen_at=migration time)
+- [x] Verify admin panel: `/admin` shows buttons, stats/top/weekly work
+- [x] Verify async: downloads don't block event loop (test with concurrent requests)
+- [x] Run full test suite: `pytest tests/ -v`
 
 ### Task 15: [Final] Update documentation
 
