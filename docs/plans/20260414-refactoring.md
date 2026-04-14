@@ -204,13 +204,13 @@ youtube_listener/           # project root (working directory)
 - Create: `services/audio.py`
 - Create: `tests/test_audio_service.py`
 
-- [ ] Move `split_audio_ffmpeg` from `youtube_bot.py` to `services/audio.py`
-- [ ] Move `prepare_files_to_send` logic to `services/audio.py`
-- [ ] **Wrap `split_audio_ffmpeg` in `asyncio.to_thread()`**: add `async_split_audio_ffmpeg` and `async_prepare_files_to_send`
-- [ ] Replace `get_logger()` with `logging.getLogger(__name__)` with key-value style
-- [ ] Write tests for `split_audio_ffmpeg` (mock subprocess.run, verify chunk paths returned)
-- [ ] Write tests for `prepare_files_to_send` (under limit: single file, over limit: calls split)
-- [ ] Run tests — must pass before next task
+- [x] Move `split_audio_ffmpeg` from `youtube_bot.py` to `services/audio.py`
+- [x] Move `prepare_files_to_send` logic to `services/audio.py`
+- [x] **Wrap `split_audio_ffmpeg` in `asyncio.to_thread()`**: add `async_split_audio_ffmpeg` and `async_prepare_files_to_send`
+- [x] Replace `get_logger()` with `logging.getLogger(__name__)` with key-value style
+- [x] Write tests for `split_audio_ffmpeg` (mock subprocess.run, verify chunk paths returned)
+- [x] Write tests for `prepare_files_to_send` (under limit: single file, over limit: calls split)
+- [x] Run tests — must pass before next task
 
 ### Task 7: Create FSM states and keyboards
 
