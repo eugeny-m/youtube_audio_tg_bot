@@ -325,14 +325,14 @@ youtube_listener/           # project root (working directory)
 - Remove: `notify_command.py`
 - Remove: `exp.py`
 
-- [ ] Remove `youtube_bot.py` (all code migrated to new modules)
-- [ ] Remove `log.py` (replaced by `core/logging.py`)
-- [ ] Remove `visit_counter.py` (replaced by `storage/repository.py`)
-- [ ] Remove `notify_command.py` (one-time script, no longer needed)
-- [ ] Remove `exp.py` (test/experimentation script, no longer needed)
-- [ ] Verify no remaining imports of old modules: `grep -r "from log import\|from visit_counter import\|from youtube_bot import" .`
-- [ ] Run full test suite
-- [ ] Run tests — must pass before next task
+- [x] Remove `youtube_bot.py` (all code migrated to new modules)
+- [x] Remove `log.py` (replaced by `core/logging.py`)
+- [x] Remove `visit_counter.py` (replaced by `storage/repository.py`)
+- [x] Remove `notify_command.py` (one-time script, no longer needed — already removed)
+- [x] Remove `exp.py` (test/experimentation script, no longer needed — already removed)
+- [x] Verify no remaining imports of old modules: `grep -r "from log import\|from visit_counter import\|from youtube_bot import" .`
+- [x] Run full test suite
+- [x] Run tests — must pass before next task
 
 ### Task 14: Verify acceptance criteria
 
