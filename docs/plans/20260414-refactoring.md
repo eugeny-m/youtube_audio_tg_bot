@@ -132,14 +132,14 @@ youtube_listener/           # project root (working directory)
 - Modify: `requirements.txt`
 - Create: `tests/test_logging.py`
 
-- [ ] Add `python-json-logger` to `requirements.txt`
-- [ ] Create `core/logging.py` with `setup_logging(settings)` function
-- [ ] Configure stdlib `logging` with `RotatingFileHandler` for `app.log` (5MB x 5) and `error.log` (5MB x 3) + `StreamHandler`
-- [ ] Use `pythonjsonlogger.json.JsonFormatter` for file handlers (JSON output)
-- [ ] Use standard formatter with human-readable output for console handler
-- [ ] When `debug=True`: set console to DEBUG level with verbose format
-- [ ] Write `tests/test_logging.py`: verify logger creation, verify handlers attached, verify JSON format in file handler
-- [ ] Run tests — must pass before next task
+- [x] Add `python-json-logger` to `requirements.txt`
+- [x] Create `core/logging.py` with `setup_logging(settings)` function
+- [x] Configure stdlib `logging` with `RotatingFileHandler` for `app.log` (5MB x 5) and `error.log` (5MB x 3) + `StreamHandler`
+- [x] Use `pythonjsonlogger.json.JsonFormatter` for file handlers (JSON output)
+- [x] Use standard formatter with human-readable output for console handler
+- [x] When `debug=True`: set console to DEBUG level with verbose format
+- [x] Write `tests/test_logging.py`: verify logger creation, verify handlers attached, verify JSON format in file handler
+- [x] Run tests — must pass before next task
 
 ### Task 3: Create SQLite storage layer
 
