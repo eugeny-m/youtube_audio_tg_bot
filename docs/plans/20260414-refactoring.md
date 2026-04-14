@@ -219,13 +219,13 @@ youtube_listener/           # project root (working directory)
 - Create: `bot/keyboards.py`
 - Create: `tests/test_keyboards.py`
 
-- [ ] Create `bot/states.py` with `DownloadStates(StatesGroup)`: `choosing_track`, `choosing_bitrate`
-- [ ] Create `bot/keyboards.py`:
+- [x] Create `bot/states.py` with `DownloadStates(StatesGroup)`: `choosing_track`, `choosing_bitrate`
+- [x] Create `bot/keyboards.py`:
   - `tracks_keyboard(streams: list[StreamInfo]) -> InlineKeyboardMarkup` — buttons per unique language
   - `bitrate_keyboard(streams: list[StreamInfo]) -> InlineKeyboardMarkup` — buttons per bitrate + "Best quality" button
-- [ ] Write tests for `tracks_keyboard` (correct buttons generated, unique languages extracted)
-- [ ] Write tests for `bitrate_keyboard` (correct buttons, size display formatted, "best" option present)
-- [ ] Run tests — must pass before next task
+- [x] Write tests for `tracks_keyboard` (correct buttons generated, unique languages extracted)
+- [x] Write tests for `bitrate_keyboard` (correct buttons, size display formatted, "best" option present)
+- [x] Run tests — must pass before next task
 
 ### Task 8: Create bot middlewares and filters
 
