@@ -99,6 +99,41 @@ class TestGetAvailableStreams:
         assert stream_infos[0].language is None
 
 
+class TestGetStreamsDefaultClient:
+    def test_returns_same_result_as_get_available_streams(self):
+        streams = [
+            _make_mock_stream(itag=140, abr="128kbps", filesize_mb=5.0, audio_track_name="English"),
+            _make_mock_stream(itag=251, abr="160kbps", filesize_mb=7.0, audio_track_name="Spanish"),
+        ]
+        mock_yt = _make_mock_yt(title="My Video", length=600, streams_list=streams)
+
+        with patch("services.youtube.pytubefix.YouTube", return_value=mock_yt):
+            result = YoutubeService._get_streams_default_client("https://youtube.com/watch?v=test")
+
+        title, duration, stream_infos = result
+        assert title == "My Video"
+        assert duration == 600.0
+        assert len(stream_infos) == 2
+        assert stream_infos[0].itag == 140
+        assert stream_infos[0].language == "English"
+        assert stream_infos[0].abr == "128kbps"
+        assert stream_infos[0].size_mb == 5.0
+        assert stream_infos[1].itag == 251
+        assert stream_infos[1].language == "Spanish"
+
+    def test_no_streams_raises(self):
+        mock_yt = _make_mock_yt(streams_list=[])
+        filtered = MagicMock()
+        ordered = MagicMock()
+        ordered.desc.return_value = []
+        filtered.order_by.return_value = ordered
+        mock_yt.streams.filter.return_value = filtered
+
+        with patch("services.youtube.pytubefix.YouTube", return_value=mock_yt):
+            with pytest.raises(ValueError, match="No audio streams"):
+                YoutubeService._get_streams_default_client("https://youtube.com/watch?v=test")
+
+
 class TestDownloadByItag:
     def test_downloads_and_returns_path(self, tmp_path):
         stream = _make_mock_stream(itag=140, default_filename="test_video.mp4")

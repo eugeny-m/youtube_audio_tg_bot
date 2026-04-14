@@ -108,10 +108,10 @@ for fmt in stream_manifest:
 **Files:**
 - Modify: `services/youtube.py`
 
-- [ ] Move current `get_available_streams()` body into `_get_streams_default_client(url)` static method
-- [ ] Update `get_available_streams()` to call `_get_streams_default_client()` (behavior unchanged)
-- [ ] Write test verifying `_get_streams_default_client()` returns same result as before
-- [ ] Run tests — must pass before next task
+- [x] Move current `get_available_streams()` body into `_get_streams_default_client(url)` static method
+- [x] Update `get_available_streams()` to call `_get_streams_default_client()` (behavior unchanged)
+- [x] Write test verifying `_get_streams_default_client()` returns same result as before
+- [x] Run tests — must pass before next task
 
 ### Task 2b: Implement WEB client SABR stream discovery
 

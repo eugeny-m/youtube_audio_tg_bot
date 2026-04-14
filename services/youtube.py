@@ -31,12 +31,12 @@ class YoutubeService:
             return None
 
     @staticmethod
-    def get_available_streams(url: str) -> tuple[str, float, list[StreamInfo]]:
-        """Get available audio streams for a video.
+    def _get_streams_default_client(url: str) -> tuple[str, float, list[StreamInfo]]:
+        """Get available audio streams using the default (ANDROID_VR) client.
 
         Returns (title, duration_sec, list of StreamInfo).
         """
-        logger.info("getting_available_streams", extra={"url": url})
+        logger.info("getting_streams_default_client", extra={"url": url})
         yt = pytubefix.YouTube(url)
         streams = yt.streams.filter(only_audio=True, subtype='mp4').order_by("abr").desc()
         if not streams:
@@ -60,6 +60,14 @@ class YoutubeService:
             "stream_count": len(stream_list),
         })
         return title, duration_sec, stream_list
+
+    @staticmethod
+    def get_available_streams(url: str) -> tuple[str, float, list[StreamInfo]]:
+        """Get available audio streams for a video.
+
+        Returns (title, duration_sec, list of StreamInfo).
+        """
+        return YoutubeService._get_streams_default_client(url)
 
     @staticmethod
     def download_by_itag(url: str, itag: int, temp_dir: Path) -> Path:
