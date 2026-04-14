@@ -271,18 +271,18 @@ youtube_listener/           # project root (working directory)
 - Create: `bot/handlers/download.py`
 - Create: `tests/test_handlers_download.py`
 
-- [ ] Create `bot/handlers/download.py` with Router:
+- [x] Create `bot/handlers/download.py` with Router:
   - **URL received**: validate URL, call `async_get_available_streams`, save streams + `created_at` to FSM state, send tracks keyboard, set state `choosing_track`
   - **Track callback** (`track:<lang>`): filter streams by language, send bitrate keyboard, set state `choosing_bitrate`
   - **Bitrate callback** (`bitrate:<itag>` or `bitrate:best`): call `async_download_by_itag`, split if needed via `async_prepare_files_to_send`, send audio files, log usage, clear FSM state, cleanup temp dir
   - Handle errors: notify user + admin on download/send failure
   - Handle invalid commands (unknown `/`) gracefully
-- [ ] Use key-value logging with video_id context throughout
-- [ ] Write tests for URL validation flow (valid URL → keyboard shown)
-- [ ] Write tests for track selection callback (filtered streams → bitrate keyboard)
-- [ ] Write tests for bitrate selection callback (download triggered, files sent)
-- [ ] Write tests for error handling (download failure → user notified)
-- [ ] Run tests — must pass before next task
+- [x] Use key-value logging with video_id context throughout
+- [x] Write tests for URL validation flow (valid URL → keyboard shown)
+- [x] Write tests for track selection callback (filtered streams → bitrate keyboard)
+- [x] Write tests for bitrate selection callback (download triggered, files sent)
+- [x] Write tests for error handling (download failure → user notified)
+- [x] Run tests — must pass before next task
 
 ### Task 11: Create main.py entry point and wire everything
 
