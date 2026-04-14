@@ -134,11 +134,11 @@ for fmt in stream_manifest:
 **Files:**
 - Modify: `services/youtube.py`
 
-- [ ] Update `get_available_streams()` to try `_get_streams_web_client()` first
-- [ ] On any exception, log warning and fall back to `_get_streams_default_client()`
-- [ ] Write test: WEB success → returns WEB result
-- [ ] Write test: WEB fails → falls back to default client
-- [ ] Run tests — must pass before next task
+- [x] Update `get_available_streams()` to try `_get_streams_web_client()` first
+- [x] On any exception, log warning and fall back to `_get_streams_default_client()`
+- [x] Write test: WEB success → returns WEB result
+- [x] Write test: WEB fails → falls back to default client
+- [x] Run tests — must pass before next task
 
 ### Task 3: Refactor download to use WEB client + SABR reconstruction
 

@@ -274,6 +274,39 @@ class TestGetStreamsWebClient:
         )
 
 
+class TestGetAvailableStreamsWithFallback:
+    def test_web_success_returns_web_result(self):
+        web_result = ("Web Title", 600.0, [
+            StreamInfo(itag=140, language="English", abr="128kbps", size_mb=5.0),
+            StreamInfo(itag=251, language="Russian", abr="128kbps", size_mb=5.0),
+        ])
+
+        with patch.object(YoutubeService, '_get_streams_web_client', return_value=web_result) as mock_web, \
+             patch.object(YoutubeService, '_get_streams_default_client') as mock_default:
+            title, duration, streams = YoutubeService.get_available_streams("https://youtube.com/watch?v=test")
+
+        mock_web.assert_called_once_with("https://youtube.com/watch?v=test")
+        mock_default.assert_not_called()
+        assert title == "Web Title"
+        assert len(streams) == 2
+        assert streams[0].language == "English"
+        assert streams[1].language == "Russian"
+
+    def test_web_fails_falls_back_to_default(self):
+        default_result = ("Default Title", 300.0, [
+            StreamInfo(itag=140, language=None, abr="128kbps", size_mb=5.0),
+        ])
+
+        with patch.object(YoutubeService, '_get_streams_web_client', side_effect=Exception("cipher error")) as mock_web, \
+             patch.object(YoutubeService, '_get_streams_default_client', return_value=default_result) as mock_default:
+            title, duration, streams = YoutubeService.get_available_streams("https://youtube.com/watch?v=test")
+
+        mock_web.assert_called_once_with("https://youtube.com/watch?v=test")
+        mock_default.assert_called_once_with("https://youtube.com/watch?v=test")
+        assert title == "Default Title"
+        assert len(streams) == 1
+
+
 class TestDownloadByItag:
     def test_downloads_and_returns_path(self, tmp_path):
         stream = _make_mock_stream(itag=140, default_filename="test_video.mp4")

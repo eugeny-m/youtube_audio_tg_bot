@@ -117,9 +117,19 @@ class YoutubeService:
     def get_available_streams(url: str) -> tuple[str, float, list[StreamInfo]]:
         """Get available audio streams for a video.
 
+        Tries WEB client first (discovers all audio tracks including dubbed/localized).
+        Falls back to default client (ANDROID_VR) if WEB client fails.
+
         Returns (title, duration_sec, list of StreamInfo).
         """
-        return YoutubeService._get_streams_default_client(url)
+        try:
+            return YoutubeService._get_streams_web_client(url)
+        except Exception as e:
+            logger.warning("web_client_failed_falling_back", extra={
+                "url": url,
+                "error": str(e),
+            })
+            return YoutubeService._get_streams_default_client(url)
 
     @staticmethod
     def download_by_itag(url: str, itag: int, temp_dir: Path) -> Path:
