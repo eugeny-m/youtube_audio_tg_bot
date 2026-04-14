@@ -7,4 +7,5 @@ pydantic_core==2.33.2
 python-slugify==8.0.4
 python-socks==2.7.1
 pytubefix==9.5.0
+pydantic-settings==2.9.1
 setuptools==72.1.0

@@ -117,13 +117,13 @@ youtube_listener/           # project root (working directory)
 - Create: `requirements-dev.txt`
 - Modify: `requirements.txt`
 
-- [ ] Create all `__init__.py` files for package structure
-- [ ] Create `core/config.py` with `Settings(BaseSettings)` class: `telegram_bot_token`, `tg_superuser`, `bot_proxy`, `bot_username`, `max_audio_file_size_mb`, `temp_download_dir`, `log_level`, `debug`, `log_dir`, `db_path`
-- [ ] Add `pydantic-settings` to `requirements.txt`
-- [ ] Create `requirements-dev.txt` with `pytest`, `pytest-asyncio`
-- [ ] Create `tests/conftest.py` with test settings fixture (env vars override, tmp paths)
-- [ ] Write `tests/test_config.py`: test default values, env var loading, optional fields
-- [ ] Run tests — must pass before next task
+- [x] Create all `__init__.py` files for package structure
+- [x] Create `core/config.py` with `Settings(BaseSettings)` class: `telegram_bot_token`, `tg_superuser`, `bot_proxy`, `bot_username`, `max_audio_file_size_mb`, `temp_download_dir`, `log_level`, `debug`, `log_dir`, `db_path`
+- [x] Add `pydantic-settings` to `requirements.txt`
+- [x] Create `requirements-dev.txt` with `pytest`, `pytest-asyncio`
+- [x] Create `tests/conftest.py` with test settings fixture (env vars override, tmp paths)
+- [x] Write `tests/test_config.py`: test default values, env var loading, optional fields
+- [x] Run tests — must pass before next task
 
 ### Task 2: Setup logging with python-json-logger in core/logging.py
 
