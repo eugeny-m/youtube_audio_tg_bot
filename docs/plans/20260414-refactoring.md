@@ -185,18 +185,18 @@ youtube_listener/           # project root (working directory)
 - Create: `services/youtube.py`
 - Create: `tests/test_youtube_service.py`
 
-- [ ] Create `services/youtube.py` with `StreamInfo` dataclass (`itag`, `language`, `abr`, `size_mb`)
-- [ ] Move `YoutubeService` from `youtube_bot.py` to `services/youtube.py`
-- [ ] Refactor `validate_video_url` → `validate_url(url) -> str | None` (returns video_id or None)
-- [ ] Add `get_available_streams(url) -> tuple[str, float, list[StreamInfo]]` — returns (title, duration_sec, list of streams with language/bitrate/size)
-- [ ] Add `download_by_itag(url, itag, temp_dir) -> Path` — download specific stream by itag
-- [ ] Keep existing `download_audio` as convenience method (downloads best quality)
-- [ ] **Wrap all blocking pytubefix calls in `asyncio.to_thread()`**: add async versions `async_get_available_streams`, `async_download_by_itag`, `async_download_audio` that delegate to sync methods via `to_thread`
-- [ ] Replace `get_logger()` calls with `logging.getLogger(__name__)` and use key-value style: `logger.info("download_started", extra={"video_id": vid, "bitrate": abr})`
-- [ ] Write tests for `validate_url` (valid/invalid URLs, mock pytubefix.extract)
-- [ ] Write tests for `get_available_streams` (mock pytubefix.YouTube, verify StreamInfo list)
-- [ ] Write tests for `download_by_itag` (mock stream.download, verify path returned)
-- [ ] Run tests — must pass before next task
+- [x] Create `services/youtube.py` with `StreamInfo` dataclass (`itag`, `language`, `abr`, `size_mb`)
+- [x] Move `YoutubeService` from `youtube_bot.py` to `services/youtube.py`
+- [x] Refactor `validate_video_url` → `validate_url(url) -> str | None` (returns video_id or None)
+- [x] Add `get_available_streams(url) -> tuple[str, float, list[StreamInfo]]` — returns (title, duration_sec, list of streams with language/bitrate/size)
+- [x] Add `download_by_itag(url, itag, temp_dir) -> Path` — download specific stream by itag
+- [x] Keep existing `download_audio` as convenience method (downloads best quality)
+- [x] **Wrap all blocking pytubefix calls in `asyncio.to_thread()`**: add async versions `async_get_available_streams`, `async_download_by_itag`, `async_download_audio` that delegate to sync methods via `to_thread`
+- [x] Replace `get_logger()` calls with `logging.getLogger(__name__)` and use key-value style: `logger.info("download_started", extra={"video_id": vid, "bitrate": abr})`
+- [x] Write tests for `validate_url` (valid/invalid URLs, mock pytubefix.extract)
+- [x] Write tests for `get_available_streams` (mock pytubefix.YouTube, verify StreamInfo list)
+- [x] Write tests for `download_by_itag` (mock stream.download, verify path returned)
+- [x] Run tests — must pass before next task
 
 ### Task 6: Extract services/audio.py with async wrapping
 
