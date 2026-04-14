@@ -57,29 +57,29 @@
 **Files:**
 - Modify: `.dockerignore`
 
-- [ ] add `media/` to .dockerignore (downloaded audio files, not needed in image)
-- [ ] add `*.tar.gz` to exclude saved docker archives
-- [ ] add `*.sh` to exclude all shell scripts (build_project.sh, release.sh, deliver_files.sh)
-- [ ] add `Dockerfile` and `prod.Dockerfile` to exclude Dockerfiles themselves
-- [ ] add `.claude/` to exclude Claude Code config if present
-- [ ] verify .dockerignore by inspecting what `COPY . /app` would include (no tests needed — infrastructure file)
+- [x] add `media/` to .dockerignore (downloaded audio files, not needed in image)
+- [x] add `*.tar.gz` to exclude saved docker archives
+- [x] add `*.sh` to exclude all shell scripts (build_project.sh, release.sh, deliver_files.sh)
+- [x] add `Dockerfile` and `prod.Dockerfile` to exclude Dockerfiles themselves
+- [x] add `.claude/` to exclude Claude Code config if present
+- [x] verify .dockerignore by inspecting what `COPY . /app` would include (no tests needed — infrastructure file)
 
 ### Task 2: Optimize prod.Dockerfile layers and caching
 
 **Files:**
 - Modify: `prod.Dockerfile`
 
-- [ ] combine apt-get update + install into single RUN with `&& rm -rf /var/lib/apt/lists/*` cleanup
-- [ ] add `--no-cache-dir` to pip install commands
-- [ ] remove `COPY . /app` and replace with explicit COPY for each required item:
+- [x] combine apt-get update + install into single RUN with `&& rm -rf /var/lib/apt/lists/*` cleanup
+- [x] add `--no-cache-dir` to pip install commands
+- [x] remove `COPY . /app` and replace with explicit COPY for each required item:
   - `COPY bot/ /app/bot/`
   - `COPY core/ /app/core/`
   - `COPY services/ /app/services/`
   - `COPY storage/ /app/storage/`
   - `COPY main.py /app/main.py`
   - no other files/directories should be copied — this is the primary optimization
-- [ ] add non-root user: `RUN useradd --create-home appuser && chown -R appuser:appuser /app` + `USER appuser`
-- [ ] verify image builds: `docker buildx build --platform=linux/amd64 -f prod.Dockerfile .`
+- [x] add non-root user: `RUN useradd --create-home appuser && chown -R appuser:appuser /app` + `USER appuser`
+- [x] verify image builds: `docker buildx build --platform=linux/amd64 -f prod.Dockerfile .`
 
 ### Task 3: Verify acceptance criteria
 

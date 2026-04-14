@@ -9,11 +9,17 @@ requirements-dev.txt
 .idea/
 .venv/
 .ralphex/
+.claude/
 .DS_Store
 *.md
 logs/
 temp_dir/
+media/
 .env
 .env.*
 docker-compose*.yml
 config/
+Dockerfile
+prod.Dockerfile
+*.tar.gz
+*.sh

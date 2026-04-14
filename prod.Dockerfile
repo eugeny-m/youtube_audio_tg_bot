@@ -1,19 +1,24 @@
 FROM python:3.12
 
-RUN apt-get update && apt-get install -y ffmpeg
-# install nodejs for pytubefix project potoken generation
-RUN apt-get install -y --fix-missing nodejs npm
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ffmpeg \
+    nodejs \
+    npm \
+    && rm -rf /var/lib/apt/lists/*
 
-# Set the working directory to /app
 WORKDIR /app
 
-# Copy the requirements file into the container and install dependencies
 COPY requirements.txt .
-RUN pip install --upgrade pip
-RUN pip install -r requirements.txt
+RUN pip install --upgrade pip --no-cache-dir \
+    && pip install --no-cache-dir -r requirements.txt
 
-# Copy the current directory contents into the container at /app
-COPY . /app
+COPY bot/ /app/bot/
+COPY core/ /app/core/
+COPY services/ /app/services/
+COPY storage/ /app/storage/
+COPY main.py /app/main.py
 
-# Define the command to run the bot when the container starts
+RUN useradd --create-home appuser && chown -R appuser:appuser /app
+USER appuser
+
 CMD ["python", "main.py"]
