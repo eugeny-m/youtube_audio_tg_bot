@@ -40,5 +40,7 @@ MANIFEST
 local-docker-compose.yml
 
 docker-compose.yml
+local_tools/
+.venv
 
 
