@@ -135,13 +135,18 @@ class TestGetStreamsDefaultClient:
                 YoutubeService._get_streams_default_client("https://youtube.com/watch?v=test")
 
 
-def _make_mock_sabr_fmt(itag=140, mime_type="audio/mp4", is_sabr=True):
+def _make_mock_sabr_fmt(itag=140, mime_type="audio/mp4", is_sabr=True, is_drc=None, xtags=None):
     """Create a format dict as returned by extract.apply_descrambler for SABR streams."""
-    return {
+    fmt = {
         'itag': itag,
         'mimeType': mime_type,
         'is_sabr': is_sabr,
     }
+    if is_drc is not None:
+        fmt['isDrc'] = is_drc
+    if xtags is not None:
+        fmt['xtags'] = xtags
+    return fmt
 
 
 def _make_mock_web_yt(title="Test Video", length_seconds="300", streaming_data=None, stream_manifest=None):
@@ -227,6 +232,56 @@ class TestGetStreamsWebClient:
         assert len(stream_infos) == 3
         languages = {s.language for s in stream_infos}
         assert languages == {"English", "Russian", "Spanish"}
+
+    def test_dedupes_loudness_variants_keeping_original(self):
+        # YouTube returns each itag 3x: original, DRC, and "vb" loudness variants.
+        stream_manifest = [
+            _make_mock_sabr_fmt(itag=249, mime_type="audio/webm"),                    # original
+            _make_mock_sabr_fmt(itag=249, mime_type="audio/webm", is_drc=True),       # DRC
+            _make_mock_sabr_fmt(itag=249, mime_type="audio/webm", xtags="CgcKAnZiEgEx"),  # vb
+        ]
+        mock_yt = _make_mock_web_yt(title="Single Track")
+
+        def make_stream(**kwargs):
+            s = MagicMock()
+            s.itag = 249
+            s.abr = "50kbps"
+            # Distinct sizes so we can assert the original (46.7) was the one kept.
+            s.filesize_mb = {False: 46.7}.get(bool(kwargs['stream'].get('isDrc') or kwargs['stream'].get('xtags')), 47.5)
+            s.audio_track_name = None
+            return s
+
+        with patch("services.youtube.pytubefix.YouTube", return_value=mock_yt), \
+             patch("services.youtube.pytubefix.extract.apply_descrambler", return_value=stream_manifest), \
+             patch("services.youtube.Stream", side_effect=make_stream):
+            title, duration, stream_infos = YoutubeService._get_streams_web_client("https://youtube.com/watch?v=test")
+
+        assert len(stream_infos) == 1
+        assert stream_infos[0].itag == 249
+        assert stream_infos[0].size_mb == 46.7  # the original variant, not DRC/vb
+
+    def test_keeps_variant_when_no_original_present(self):
+        # If YouTube ever omits the original, we still surface one row (not zero).
+        stream_manifest = [
+            _make_mock_sabr_fmt(itag=249, mime_type="audio/webm", is_drc=True),
+            _make_mock_sabr_fmt(itag=249, mime_type="audio/webm", xtags="CgcKAnZiEgEx"),
+        ]
+        mock_yt = _make_mock_web_yt()
+
+        def make_stream(**kwargs):
+            s = MagicMock()
+            s.itag = 249
+            s.abr = "50kbps"
+            s.filesize_mb = 47.5
+            s.audio_track_name = None
+            return s
+
+        with patch("services.youtube.pytubefix.YouTube", return_value=mock_yt), \
+             patch("services.youtube.pytubefix.extract.apply_descrambler", return_value=stream_manifest), \
+             patch("services.youtube.Stream", side_effect=make_stream):
+            _, _, stream_infos = YoutubeService._get_streams_web_client("https://youtube.com/watch?v=test")
+
+        assert len(stream_infos) == 1
 
     def test_no_audio_streams_raises(self):
         stream_manifest = [

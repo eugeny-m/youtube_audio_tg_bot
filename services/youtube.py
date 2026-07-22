@@ -91,7 +91,11 @@ class YoutubeService:
         title = vid_info['videoDetails']['title']
         duration_sec = float(vid_info['videoDetails']['lengthSeconds'])
 
-        stream_list = []
+        # YouTube ships each itag three times per language: the original audio
+        # plus loudness-processed variants (DRC / "vb"), told apart by isDrc/xtags.
+        # Those variants only exist on the SABR endpoint we can't download from,
+        # so keep just the original per (itag, language) to avoid duplicate rows.
+        seen: dict[tuple[int, Optional[str]], tuple[bool, StreamInfo]] = {}
         for fmt in stream_manifest:
             mime_type = fmt.get('mimeType', '')
             if 'audio' not in mime_type:
@@ -104,8 +108,14 @@ class YoutubeService:
                     video_playback_ustreamer_config=yt.video_playback_ustreamer_config,
                 )
                 lang = getattr(stream, 'audio_track_name', None)
+                is_original = not fmt.get('isDrc') and not fmt.get('xtags')
+                key = (stream.itag, lang)
+                existing = seen.get(key)
+                if existing is not None and (existing[0] or not is_original):
+                    # Already have the original, or this one isn't it — skip.
+                    continue
                 size_mb = stream.filesize_mb if stream._filesize_mb else 0.0
-                stream_list.append(StreamInfo(
+                seen[key] = (is_original, StreamInfo(
                     itag=stream.itag,
                     language=lang,
                     abr=stream.abr,
@@ -115,6 +125,7 @@ class YoutubeService:
                 logger.debug("skipping_unparseable_stream", extra={"itag": fmt.get("itag")})
                 continue
 
+        stream_list = [info for _, info in seen.values()]
         if not stream_list:
             raise ValueError("No audio streams available from WEB client for this URL")
 
