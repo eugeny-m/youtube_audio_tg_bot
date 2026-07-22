@@ -309,6 +309,18 @@ class TestGetAvailableStreamsWithFallback:
         assert title == "Default Title"
         assert len(streams) == 1
 
+    def test_live_stream_ended_does_not_fall_back(self):
+        from pytubefix.exceptions import LiveStreamEnded
+
+        with patch.object(YoutubeService, '_get_streams_web_client',
+                          side_effect=LiveStreamEnded(video_id="test")) as mock_web, \
+             patch.object(YoutubeService, '_get_streams_default_client') as mock_default:
+            with pytest.raises(LiveStreamEnded):
+                YoutubeService.get_available_streams("https://youtube.com/watch?v=test")
+
+        mock_web.assert_called_once_with("https://youtube.com/watch?v=test")
+        mock_default.assert_not_called()
+
 
 class TestBuildSabrStream:
     def test_returns_stream_for_matching_itag(self):
@@ -395,14 +407,41 @@ class TestDownloadByItag:
         assert result.exists()
         default_stream.download.assert_called_once()
 
-    def test_403_error_raises_informative_message(self, tmp_path):
-        """HTTP 403 from SABR download should raise with auth message, not fallback."""
+    def test_sabr_403_falls_back_to_default(self, tmp_path):
+        """HTTP 403 from SABR (needs po_token) must fall back to the default client."""
         http_error = HTTPError(
             url="https://example.com", code=403, msg="Forbidden",
             hdrs=MagicMock(), fp=MagicMock(),
         )
+        default_stream = _make_mock_stream(itag=249, default_filename="test_video.webm")
 
-        with patch.object(YoutubeService, '_build_sabr_stream', side_effect=http_error):
+        def fake_download(output_path, filename):
+            Path(output_path, filename).touch()
+        default_stream.download.side_effect = fake_download
+
+        mock_yt = _make_mock_yt(streams_list=[default_stream])
+
+        with patch.object(YoutubeService, '_build_sabr_stream', side_effect=http_error), \
+             patch("services.youtube.pytubefix.YouTube", return_value=mock_yt):
+            result = YoutubeService.download_by_itag(
+                "https://youtube.com/watch?v=test", 249, tmp_path
+            )
+
+        assert result.exists()
+        default_stream.download.assert_called_once()
+
+    def test_default_403_raises_informative_message(self, tmp_path):
+        """When even the default client 403s, raise the user-facing auth message."""
+        http_error = HTTPError(
+            url="https://example.com", code=403, msg="Forbidden",
+            hdrs=MagicMock(), fp=MagicMock(),
+        )
+        default_stream = _make_mock_stream(itag=140, default_filename="test_video.mp4")
+        default_stream.download.side_effect = http_error
+        mock_yt = _make_mock_yt(streams_list=[default_stream])
+
+        with patch.object(YoutubeService, '_build_sabr_stream', side_effect=Exception("SABR error")), \
+             patch("services.youtube.pytubefix.YouTube", return_value=mock_yt):
             with pytest.raises(ValueError, match="HTTP 403"):
                 YoutubeService.download_by_itag(
                     "https://youtube.com/watch?v=test", 140, tmp_path

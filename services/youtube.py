@@ -7,6 +7,7 @@ from typing import Optional
 
 import pytubefix
 import pytubefix.extract
+from pytubefix import exceptions as pytubefix_exceptions
 from pytubefix.streams import Stream
 from urllib.error import HTTPError
 from slugify import slugify
@@ -139,6 +140,10 @@ class YoutubeService:
         """
         try:
             return YoutubeService._get_streams_web_client(url)
+        except pytubefix_exceptions.LiveStreamEnded:
+            # A just-ended live stream is unavailable on every client until
+            # YouTube finishes processing the recording — falling back is futile.
+            raise
         except Exception as e:
             logger.warning("web_client_failed_falling_back", extra={
                 "url": url,
@@ -190,7 +195,9 @@ class YoutubeService:
         """
         logger.info("download_by_itag_started", extra={"url": url, "itag": itag})
 
-        # Try SABR stream (WEB client) first
+        # Try SABR stream (WEB client) first. Its media URLs often require a
+        # po_token and return HTTP 403 — the default client serves the same itag
+        # without one, so any failure here (403 included) must fall through.
         try:
             stream = YoutubeService._build_sabr_stream(url, itag)
             result_path = YoutubeService._download_stream(stream, temp_dir, itag)
@@ -198,28 +205,26 @@ class YoutubeService:
                 "url": url, "itag": itag, "path": str(result_path), "method": "sabr",
             })
             return result_path
+        except Exception as e:
+            logger.warning("sabr_download_failed_falling_back", extra={
+                "url": url, "itag": itag, "error": str(e),
+            })
+
+        # Fallback to default client (ANDROID_VR).
+        logger.info("download_by_itag_fallback_default", extra={"url": url, "itag": itag})
+        try:
+            yt = pytubefix.YouTube(url)
+            stream = yt.streams.get_by_itag(itag)
+            if stream is None:
+                raise ValueError(f"No stream found with itag {itag}")
+            result_path = YoutubeService._download_stream(stream, temp_dir, itag)
         except HTTPError as e:
             if e.code == 403:
                 raise ValueError(
                     "Download blocked (HTTP 403). YouTube may require authentication "
                     "for this audio track. Try a different track or contact the bot admin."
                 ) from e
-            logger.warning("sabr_download_failed_falling_back", extra={
-                "url": url, "itag": itag, "error": str(e),
-            })
-        except Exception as e:
-            logger.warning("sabr_download_failed_falling_back", extra={
-                "url": url, "itag": itag, "error": str(e),
-            })
-
-        # Fallback to default client
-        logger.info("download_by_itag_fallback_default", extra={"url": url, "itag": itag})
-        yt = pytubefix.YouTube(url)
-        stream = yt.streams.get_by_itag(itag)
-        if stream is None:
-            raise ValueError(f"No stream found with itag {itag}")
-
-        result_path = YoutubeService._download_stream(stream, temp_dir, itag)
+            raise
         logger.info("download_by_itag_completed", extra={
             "url": url, "itag": itag, "path": str(result_path), "method": "default",
         })

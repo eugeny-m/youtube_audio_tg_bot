@@ -172,6 +172,27 @@ class TestOnUrl:
         bot.send_message.assert_called_once()
 
     @pytest.mark.asyncio
+    async def test_live_stream_ended_notifies_user_only(self, repo, settings):
+        from pytubefix.exceptions import LiveStreamEnded
+
+        msg = make_message(text="https://youtube.com/watch?v=abc")
+        state = make_state()
+        bot = make_bot()
+
+        with patch("bot.handlers.download.YoutubeService") as mock_yt:
+            mock_yt.validate_url.return_value = "abc"
+            mock_yt.async_get_available_streams = AsyncMock(
+                side_effect=LiveStreamEnded(video_id="abc")
+            )
+            await on_url(msg, state, repo, settings, bot)
+
+        resp = msg.answer.return_value
+        resp.edit_text.assert_called()
+        assert "live stream" in resp.edit_text.call_args[0][0].lower()
+        # Not a bot error — the admin must not be alerted.
+        bot.send_message.assert_not_called()
+
+    @pytest.mark.asyncio
     async def test_no_user_returns_early(self, repo, settings):
         msg = make_message()
         msg.from_user = None

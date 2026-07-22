@@ -10,6 +10,7 @@ from aiogram import Bot, F, Router
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, FSInputFile, Message
+from pytubefix.exceptions import LiveStreamEnded
 
 from bot.keyboards import bitrate_keyboard, get_track_languages, parse_abr, tracks_keyboard
 from bot.states import DownloadStates
@@ -64,6 +65,14 @@ async def on_url(
 
     try:
         title, duration_sec, streams = await YoutubeService.async_get_available_streams(url)
+    except LiveStreamEnded:
+        # Expected, user-facing situation — not a bot error, so don't alert the admin.
+        logger.info("live_stream_ended", extra={"video_id": video_id})
+        await resp.edit_text(
+            "This looks like a live stream that just ended. YouTube is still "
+            "processing the recording — please try again later."
+        )
+        return
     except Exception as e:
         logger.error("get_streams_failed", extra={"video_id": video_id, "error": str(e)})
         await resp.edit_text("Failed to fetch audio tracks. Please try again.")
