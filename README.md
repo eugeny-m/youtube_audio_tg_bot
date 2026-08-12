@@ -76,6 +76,19 @@ Volume mounts:
 
 On first run, existing `first_visit_ids.txt` and `bot_usage.txt` files in the config directory are automatically migrated to SQLite.
 
+## Production
+
+| | |
+|---|---|
+| Server | `138.124.73.63` (HipHoster, Frankfurt) |
+| Project dir | `/opt/youtube_tg_bot` (docker-compose.yml, logs/) |
+| Config dir | `/etc/youtube_tg_bot` (bot.db), mounted to `/app/config` |
+| Container | `youtube_tg` |
+
+The image is built locally (`release.sh`) and shipped via `docker save`/`docker load` — there is no registry.
+
+`BOT_PROXY` is not set: the server reaches the Telegram API directly.
+
 ## Testing
 
 ```bash
