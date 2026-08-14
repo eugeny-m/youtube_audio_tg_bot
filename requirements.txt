@@ -6,7 +6,7 @@ pydantic==2.13.4
 pydantic_core==2.46.4
 python-slugify==8.0.4
 python-socks==2.8.2
-pytubefix==10.10.1
+pytubefix==10.11.0
 pydantic-settings==2.14.2
 python-json-logger==4.1.0
 aiosqlite==0.22.1

@@ -193,6 +193,46 @@ class TestOnUrl:
         bot.send_message.assert_not_called()
 
     @pytest.mark.asyncio
+    async def test_ongoing_live_stream_notifies_user_only(self, repo, settings):
+        from pytubefix.exceptions import LiveStreamError
+
+        msg = make_message(text="https://youtube.com/watch?v=abc")
+        state = make_state()
+        bot = make_bot()
+
+        with patch("bot.handlers.download.YoutubeService") as mock_yt:
+            mock_yt.validate_url.return_value = "abc"
+            mock_yt.async_get_available_streams = AsyncMock(
+                side_effect=LiveStreamError(video_id="abc")
+            )
+            await on_url(msg, state, repo, settings, bot)
+
+        resp = msg.answer.return_value
+        resp.edit_text.assert_called()
+        assert "still live" in resp.edit_text.call_args[0][0].lower()
+        bot.send_message.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_recording_unavailable_notifies_user_only(self, repo, settings):
+        from pytubefix.exceptions import RecordingUnavailable
+
+        msg = make_message(text="https://youtube.com/watch?v=abc")
+        state = make_state()
+        bot = make_bot()
+
+        with patch("bot.handlers.download.YoutubeService") as mock_yt:
+            mock_yt.validate_url.return_value = "abc"
+            mock_yt.async_get_available_streams = AsyncMock(
+                side_effect=RecordingUnavailable(video_id="abc")
+            )
+            await on_url(msg, state, repo, settings, bot)
+
+        resp = msg.answer.return_value
+        resp.edit_text.assert_called()
+        assert "live stream" in resp.edit_text.call_args[0][0].lower()
+        bot.send_message.assert_not_called()
+
+    @pytest.mark.asyncio
     async def test_no_user_returns_early(self, repo, settings):
         msg = make_message()
         msg.from_user = None

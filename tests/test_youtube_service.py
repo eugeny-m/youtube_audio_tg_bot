@@ -32,6 +32,8 @@ def _make_mock_stream(itag=140, abr="128kbps", filesize_mb=5.0, default_filename
     stream.filesize_mb = filesize_mb
     stream.default_filename = default_filename
     stream.audio_track_name = audio_track_name
+    stream.is_drc = False
+    stream.xtags = None
     return stream
 
 
@@ -100,7 +102,7 @@ class TestGetAvailableStreams:
         assert stream_infos[0].language is None
 
 
-class TestGetStreamsDefaultClient:
+class TestGetStreamsQueryClient:
     def test_returns_same_result_as_get_available_streams(self):
         streams = [
             _make_mock_stream(itag=140, abr="128kbps", filesize_mb=5.0, audio_track_name="English"),
@@ -109,7 +111,9 @@ class TestGetStreamsDefaultClient:
         mock_yt = _make_mock_yt(title="My Video", length=600, streams_list=streams)
 
         with patch("services.youtube.pytubefix.YouTube", return_value=mock_yt):
-            result = YoutubeService._get_streams_default_client("https://youtube.com/watch?v=test")
+            result = YoutubeService._get_streams_query_client(
+                "https://youtube.com/watch?v=test", "ANDROID_VR"
+            )
 
         title, duration, stream_infos = result
         assert title == "My Video"
@@ -132,7 +136,38 @@ class TestGetStreamsDefaultClient:
 
         with patch("services.youtube.pytubefix.YouTube", return_value=mock_yt):
             with pytest.raises(ValueError, match="No audio streams"):
-                YoutubeService._get_streams_default_client("https://youtube.com/watch?v=test")
+                YoutubeService._get_streams_query_client(
+                    "https://youtube.com/watch?v=test", "TV"
+                )
+
+    def test_passes_client_to_pytubefix(self):
+        mock_yt = _make_mock_yt(streams_list=[_make_mock_stream()])
+
+        with patch("services.youtube.pytubefix.YouTube", return_value=mock_yt) as mock_yt_cls:
+            YoutubeService._get_streams_query_client("https://youtube.com/watch?v=test", "TV")
+
+        mock_yt_cls.assert_called_once_with("https://youtube.com/watch?v=test", client="TV")
+
+    def test_dedupes_loudness_variants_keeping_original(self):
+        # TV returns each itag three times: original, DRC and "vb" variants.
+        original = _make_mock_stream(itag=249, abr="50kbps", filesize_mb=46.7)
+        original.is_drc = False
+        original.xtags = None
+        drc = _make_mock_stream(itag=249, abr="50kbps", filesize_mb=47.5)
+        drc.is_drc = True
+        drc.xtags = None
+        vb = _make_mock_stream(itag=249, abr="50kbps", filesize_mb=47.9)
+        vb.is_drc = False
+        vb.xtags = "CgcKAnZiEgEx"
+        mock_yt = _make_mock_yt(streams_list=[drc, original, vb])
+
+        with patch("services.youtube.pytubefix.YouTube", return_value=mock_yt):
+            _, _, stream_infos = YoutubeService._get_streams_query_client(
+                "https://youtube.com/watch?v=test", "TV"
+            )
+
+        assert len(stream_infos) == 1
+        assert stream_infos[0].size_mb == 46.7
 
 
 def _make_mock_sabr_fmt(itag=140, mime_type="audio/mp4", is_sabr=True, is_drc=None, xtags=None):
@@ -294,6 +329,21 @@ class TestGetStreamsWebClient:
             with pytest.raises(ValueError, match="No audio streams available from WEB client"):
                 YoutubeService._get_streams_web_client("https://youtube.com/watch?v=test")
 
+    def test_no_audio_streams_surfaces_live_reason(self):
+        """An ongoing broadcast has no downloadable formats — report why, not 'no streams'."""
+        from pytubefix.exceptions import LiveStreamError
+
+        # A live format lacks approxDurationMs, so Stream() raises and it is dropped.
+        stream_manifest = [_make_mock_sabr_fmt(itag=140, mime_type="audio/mp4")]
+        mock_yt = _make_mock_web_yt()
+        mock_yt.check_availability.side_effect = LiveStreamError(video_id="test")
+
+        with patch("services.youtube.pytubefix.YouTube", return_value=mock_yt), \
+             patch("services.youtube.pytubefix.extract.apply_descrambler", return_value=stream_manifest), \
+             patch("services.youtube.Stream", side_effect=KeyError("approxDurationMs")):
+            with pytest.raises(LiveStreamError):
+                YoutubeService._get_streams_web_client("https://youtube.com/watch?v=test")
+
     def test_uses_web_client(self):
         stream_manifest = [_make_mock_sabr_fmt(itag=140, mime_type="audio/mp4")]
         mock_yt = _make_mock_web_yt()
@@ -340,41 +390,154 @@ class TestGetAvailableStreamsWithFallback:
         ])
 
         with patch.object(YoutubeService, '_get_streams_web_client', return_value=web_result) as mock_web, \
-             patch.object(YoutubeService, '_get_streams_default_client') as mock_default:
+             patch.object(YoutubeService, '_get_streams_query_client') as mock_query:
             title, duration, streams = YoutubeService.get_available_streams("https://youtube.com/watch?v=test")
 
         mock_web.assert_called_once_with("https://youtube.com/watch?v=test")
-        mock_default.assert_not_called()
+        mock_query.assert_not_called()
         assert title == "Web Title"
         assert len(streams) == 2
         assert streams[0].language == "English"
         assert streams[1].language == "Russian"
 
-    def test_web_fails_falls_back_to_default(self):
-        default_result = ("Default Title", 300.0, [
+    def test_web_fails_falls_back_to_tv(self):
+        tv_result = ("TV Title", 300.0, [
             StreamInfo(itag=140, language=None, abr="128kbps", size_mb=5.0),
         ])
 
         with patch.object(YoutubeService, '_get_streams_web_client', side_effect=Exception("cipher error")) as mock_web, \
-             patch.object(YoutubeService, '_get_streams_default_client', return_value=default_result) as mock_default:
+             patch.object(YoutubeService, '_get_streams_query_client', return_value=tv_result) as mock_query:
             title, duration, streams = YoutubeService.get_available_streams("https://youtube.com/watch?v=test")
 
         mock_web.assert_called_once_with("https://youtube.com/watch?v=test")
-        mock_default.assert_called_once_with("https://youtube.com/watch?v=test")
-        assert title == "Default Title"
+        mock_query.assert_called_once_with("https://youtube.com/watch?v=test", "TV")
+        assert title == "TV Title"
         assert len(streams) == 1
+
+    def test_tv_bot_detection_falls_back_to_android_vr(self):
+        from pytubefix.exceptions import BotDetection
+
+        vr_result = ("VR Title", 300.0, [
+            StreamInfo(itag=140, language=None, abr="128kbps", size_mb=5.0),
+        ])
+
+        def by_client(url, client):
+            if client == "TV":
+                raise BotDetection(video_id="test")
+            return vr_result
+
+        with patch.object(YoutubeService, '_get_streams_web_client', side_effect=Exception("cipher error")), \
+             patch.object(YoutubeService, '_get_streams_query_client', side_effect=by_client) as mock_query:
+            title, _, streams = YoutubeService.get_available_streams("https://youtube.com/watch?v=test")
+
+        assert [c.args[1] for c in mock_query.call_args_list] == ["TV", "ANDROID_VR"]
+        assert title == "VR Title"
+
+    def test_bot_detection_on_whole_chain_retries_once(self):
+        from pytubefix.exceptions import BotDetection
+
+        result = ("Retried Title", 300.0, [
+            StreamInfo(itag=140, language=None, abr="128kbps", size_mb=5.0),
+        ])
+        attempts = {"n": 0}
+
+        def flaky(url):
+            attempts["n"] += 1
+            if attempts["n"] == 1:
+                raise BotDetection(video_id="test")
+            return result
+
+        with patch.object(YoutubeService, '_get_streams_any_client', side_effect=flaky), \
+             patch("services.youtube.time.sleep") as mock_sleep:
+            title, _, streams = YoutubeService.get_available_streams("https://youtube.com/watch?v=test")
+
+        assert attempts["n"] == 2
+        assert title == "Retried Title"
+        mock_sleep.assert_called_once()
+
+    def test_bot_detection_twice_propagates(self):
+        from pytubefix.exceptions import BotDetection
+
+        with patch.object(YoutubeService, '_get_streams_any_client',
+                          side_effect=BotDetection(video_id="test")), \
+             patch("services.youtube.time.sleep"):
+            with pytest.raises(BotDetection):
+                YoutubeService.get_available_streams("https://youtube.com/watch?v=test")
+
+    def test_all_clients_fail_raises_last_error(self):
+        with patch.object(YoutubeService, '_get_streams_web_client', side_effect=Exception("web down")), \
+             patch.object(YoutubeService, '_get_streams_query_client',
+                          side_effect=ValueError("no streams here")):
+            with pytest.raises(ValueError, match="no streams here"):
+                YoutubeService.get_available_streams("https://youtube.com/watch?v=test")
 
     def test_live_stream_ended_does_not_fall_back(self):
         from pytubefix.exceptions import LiveStreamEnded
 
         with patch.object(YoutubeService, '_get_streams_web_client',
                           side_effect=LiveStreamEnded(video_id="test")) as mock_web, \
-             patch.object(YoutubeService, '_get_streams_default_client') as mock_default:
+             patch.object(YoutubeService, '_get_streams_query_client') as mock_query:
             with pytest.raises(LiveStreamEnded):
                 YoutubeService.get_available_streams("https://youtube.com/watch?v=test")
 
         mock_web.assert_called_once_with("https://youtube.com/watch?v=test")
-        mock_default.assert_not_called()
+        mock_query.assert_not_called()
+
+    def test_video_error_from_web_stops_chain(self):
+        """A live broadcast is live for every client — don't ask the others."""
+        from pytubefix.exceptions import LiveStreamError
+
+        with patch.object(YoutubeService, '_get_streams_web_client',
+                          side_effect=LiveStreamError(video_id="test")), \
+             patch.object(YoutubeService, '_get_streams_query_client') as mock_query:
+            with pytest.raises(LiveStreamError):
+                YoutubeService.get_available_streams("https://youtube.com/watch?v=test")
+
+        mock_query.assert_not_called()
+
+    def test_video_error_is_not_masked_by_later_bot_detection(self):
+        """TV's verdict on the video outranks ANDROID_VR's refusal to answer."""
+        from pytubefix.exceptions import LiveStreamError
+
+        with patch.object(YoutubeService, '_get_streams_web_client', side_effect=Exception("web down")), \
+             patch.object(YoutubeService, '_get_streams_query_client',
+                          side_effect=LiveStreamError(video_id="test")) as mock_query:
+            with pytest.raises(LiveStreamError):
+                YoutubeService.get_available_streams("https://youtube.com/watch?v=test")
+
+        # ANDROID_VR is never reached, so its BotDetection can't replace the reason.
+        mock_query.assert_called_once_with("https://youtube.com/watch?v=test", "TV")
+
+    def test_login_required_still_falls_through(self):
+        """LoginRequired is aimed at the client, so the next one is still worth a try."""
+        from pytubefix.exceptions import LoginRequired
+
+        vr_result = ("VR Title", 300.0, [
+            StreamInfo(itag=140, language=None, abr="128kbps", size_mb=5.0),
+        ])
+
+        def by_client(url, client):
+            if client == "TV":
+                raise LoginRequired(video_id="test", reason="Please sign in")
+            return vr_result
+
+        with patch.object(YoutubeService, '_get_streams_web_client', side_effect=Exception("web down")), \
+             patch.object(YoutubeService, '_get_streams_query_client', side_effect=by_client) as mock_query:
+            title, _, _ = YoutubeService.get_available_streams("https://youtube.com/watch?v=test")
+
+        assert title == "VR Title"
+        assert [c.args[1] for c in mock_query.call_args_list] == ["TV", "ANDROID_VR"]
+
+    def test_live_stream_ended_from_query_client_stops_chain(self):
+        from pytubefix.exceptions import LiveStreamEnded
+
+        with patch.object(YoutubeService, '_get_streams_web_client', side_effect=Exception("web down")), \
+             patch.object(YoutubeService, '_get_streams_query_client',
+                          side_effect=LiveStreamEnded(video_id="test")) as mock_query:
+            with pytest.raises(LiveStreamEnded):
+                YoutubeService.get_available_streams("https://youtube.com/watch?v=test")
+
+        mock_query.assert_called_once_with("https://youtube.com/watch?v=test", "TV")
 
 
 class TestBuildSabrStream:
@@ -442,6 +605,71 @@ class TestDownloadByItag:
         assert result.parent == tmp_path
         assert result.exists()
         sabr_stream.download.assert_called_once()
+
+    def test_sabr_fails_falls_back_to_tv_first(self, tmp_path):
+        """The TV client is tried before ANDROID_VR once SABR fails."""
+        tv_stream = _make_mock_stream(itag=140, default_filename="test_video.mp4")
+
+        def fake_download(output_path, filename):
+            Path(output_path, filename).touch()
+        tv_stream.download.side_effect = fake_download
+
+        mock_yt = _make_mock_yt(streams_list=[tv_stream])
+
+        with patch.object(YoutubeService, '_build_sabr_stream', side_effect=Exception("SABR error")), \
+             patch("services.youtube.pytubefix.YouTube", return_value=mock_yt) as mock_yt_cls:
+            result = YoutubeService.download_by_itag(
+                "https://youtube.com/watch?v=test", 140, tmp_path
+            )
+
+        assert result.exists()
+        mock_yt_cls.assert_called_once_with("https://youtube.com/watch?v=test", client="TV")
+
+    def test_tv_failure_falls_back_to_android_vr(self, tmp_path):
+        """When TV cannot deliver the itag, ANDROID_VR is tried next."""
+        vr_stream = _make_mock_stream(itag=140, default_filename="test_video.mp4")
+
+        def fake_download(output_path, filename):
+            Path(output_path, filename).touch()
+        vr_stream.download.side_effect = fake_download
+
+        tv_yt = _make_mock_yt(streams_list=[])
+        tv_yt.streams.get_by_itag = lambda itag: None
+        vr_yt = _make_mock_yt(streams_list=[vr_stream])
+
+        def by_client(url, client):
+            return tv_yt if client == "TV" else vr_yt
+
+        with patch.object(YoutubeService, '_build_sabr_stream', side_effect=Exception("SABR error")), \
+             patch("services.youtube.pytubefix.YouTube", side_effect=by_client) as mock_yt_cls:
+            result = YoutubeService.download_by_itag(
+                "https://youtube.com/watch?v=test", 140, tmp_path
+            )
+
+        assert result.exists()
+        assert [c.kwargs["client"] for c in mock_yt_cls.call_args_list] == ["TV", "ANDROID_VR"]
+
+    def test_bot_detection_retries_whole_chain(self, tmp_path):
+        from pytubefix.exceptions import BotDetection
+
+        attempts = {"n": 0}
+        expected = tmp_path / "audio.m4a"
+
+        def flaky(url, itag, temp_dir):
+            attempts["n"] += 1
+            if attempts["n"] == 1:
+                raise BotDetection(video_id="test")
+            return expected
+
+        with patch.object(YoutubeService, '_download_any_client', side_effect=flaky), \
+             patch("services.youtube.time.sleep") as mock_sleep:
+            result = YoutubeService.download_by_itag(
+                "https://youtube.com/watch?v=test", 140, tmp_path
+            )
+
+        assert result == expected
+        assert attempts["n"] == 2
+        mock_sleep.assert_called_once()
 
     def test_sabr_fails_falls_back_to_default(self, tmp_path):
         """When SABR fails with generic error, falls back to default client."""
