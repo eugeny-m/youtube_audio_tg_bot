@@ -2,7 +2,7 @@
 set -e
 
 IMAGE_NAME="youtube_tg"
-REMOTE_HOST="ss_admin_timeweb"
+REMOTE_HOST="ss_admin_dev_hiphoster_claude"
 REMOTE_DIR="/opt/youtube_tg_bot"
 MAIN_BRANCH="main"
 DEV_BRANCH="develop"
