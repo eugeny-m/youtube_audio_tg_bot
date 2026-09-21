@@ -240,23 +240,18 @@ class YoutubeService:
 
     @staticmethod
     def _build_sabr_stream(url: str, itag: int) -> Stream:
-        """Reconstruct a single SABR Stream by itag from WEB client's vid_info.
+        """Pick a single SABR Stream by itag from the WEB client.
+
+        Goes through fmt_streams rather than building Stream from vid_info:
+        only fmt_streams applies the signature/n-sig and the po_token, and
+        without them the WEB media URL answers HTTP 403.
 
         Raises ValueError if the itag is not found among SABR audio streams.
         """
         yt = pytubefix.YouTube(url, client='WEB')
-        vid_info = yt.vid_info
-        streaming_data = vid_info['streamingData']
-        stream_manifest = pytubefix.extract.apply_descrambler(streaming_data)
-
-        for fmt in stream_manifest:
-            if int(fmt.get('itag', 0)) == itag and 'audio' in fmt.get('mimeType', ''):
-                return Stream(
-                    stream=fmt,
-                    monostate=yt.stream_monostate,
-                    po_token=yt.po_token,
-                    video_playback_ustreamer_config=yt.video_playback_ustreamer_config,
-                )
+        for stream in yt.fmt_streams:
+            if stream.itag == itag and 'audio' in stream.mime_type:
+                return stream
 
         raise ValueError(f"No SABR audio stream found with itag {itag}")
 

@@ -541,49 +541,40 @@ class TestGetAvailableStreamsWithFallback:
 
 
 class TestBuildSabrStream:
-    def test_returns_stream_for_matching_itag(self):
-        stream_manifest = [
-            _make_mock_sabr_fmt(itag=140, mime_type="audio/mp4"),
-            _make_mock_sabr_fmt(itag=251, mime_type="audio/webm"),
-            _make_mock_sabr_fmt(itag=299, mime_type="video/mp4"),
-        ]
-        mock_yt = _make_mock_web_yt(title="Test", length_seconds="300")
-        mock_stream = MagicMock()
-        mock_stream.itag = 140
+    @staticmethod
+    def _fmt_stream(itag, mime_type):
+        stream = MagicMock()
+        stream.itag = itag
+        stream.mime_type = mime_type
+        return stream
 
-        with patch("services.youtube.pytubefix.YouTube", return_value=mock_yt) as mock_yt_cls, \
-             patch("services.youtube.pytubefix.extract.apply_descrambler", return_value=stream_manifest), \
-             patch("services.youtube.Stream", return_value=mock_stream) as mock_stream_cls:
+    def test_returns_stream_for_matching_itag(self):
+        mock_yt = MagicMock()
+        mock_yt.fmt_streams = [
+            self._fmt_stream(140, "audio/mp4"),
+            self._fmt_stream(251, "audio/webm"),
+            self._fmt_stream(299, "video/mp4"),
+        ]
+
+        with patch("services.youtube.pytubefix.YouTube", return_value=mock_yt) as mock_yt_cls:
             result = YoutubeService._build_sabr_stream("https://youtube.com/watch?v=test", 140)
 
-        assert result == mock_stream
+        assert result is mock_yt.fmt_streams[0]
         mock_yt_cls.assert_called_once_with("https://youtube.com/watch?v=test", client='WEB')
-        mock_stream_cls.assert_called_once_with(
-            stream=stream_manifest[0],
-            monostate=mock_yt.stream_monostate,
-            po_token=mock_yt.po_token,
-            video_playback_ustreamer_config=mock_yt.video_playback_ustreamer_config,
-        )
 
     def test_raises_for_missing_itag(self):
-        stream_manifest = [
-            _make_mock_sabr_fmt(itag=140, mime_type="audio/mp4"),
-        ]
-        mock_yt = _make_mock_web_yt()
+        mock_yt = MagicMock()
+        mock_yt.fmt_streams = [self._fmt_stream(140, "audio/mp4")]
 
-        with patch("services.youtube.pytubefix.YouTube", return_value=mock_yt), \
-             patch("services.youtube.pytubefix.extract.apply_descrambler", return_value=stream_manifest):
+        with patch("services.youtube.pytubefix.YouTube", return_value=mock_yt):
             with pytest.raises(ValueError, match="No SABR audio stream found with itag 999"):
                 YoutubeService._build_sabr_stream("https://youtube.com/watch?v=test", 999)
 
     def test_skips_video_streams(self):
-        stream_manifest = [
-            _make_mock_sabr_fmt(itag=140, mime_type="video/mp4"),  # video, not audio
-        ]
-        mock_yt = _make_mock_web_yt()
+        mock_yt = MagicMock()
+        mock_yt.fmt_streams = [self._fmt_stream(140, "video/mp4")]
 
-        with patch("services.youtube.pytubefix.YouTube", return_value=mock_yt), \
-             patch("services.youtube.pytubefix.extract.apply_descrambler", return_value=stream_manifest):
+        with patch("services.youtube.pytubefix.YouTube", return_value=mock_yt):
             with pytest.raises(ValueError, match="No SABR audio stream found with itag 140"):
                 YoutubeService._build_sabr_stream("https://youtube.com/watch?v=test", 140)
 
